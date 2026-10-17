@@ -12,21 +12,33 @@ public enum MathGateType
 }
 
 /// <summary>
-/// Komponen Math Gate yang ditempel pada gerbang.
-/// Mendeteksi Player atau Enemy yang melewatinya dan menampilkan efek matematika (Plus/Minus).
+/// Komponen Math Gate untuk 1 papan gerbang (berisi 2 efek: plus & minus).
+/// Mengunci gerbang ini dan gerbang pasangannya jika salah satu dilewati.
 /// </summary>
 public class MathGate : MonoBehaviour
 {
-    [Header("Gate Settings")]
-    public MathGateType gateType = MathGateType.AddHP;
-    public float value = 5f;
-    public float secondaryValue = 5f; // Dipakai untuk custom misal minus HP
-    public string customLabel = "";
-    public float cooldownSeconds = 3f;
+    [Header("Gerbang Pasangan (Misal Papan Kiri ke Papan Kanan)")]
+    [Tooltip("Tarik GameObject gerbang sebelahnya ke sini di Inspector!")]
+    public MathGate pairedGate; 
 
-    [Header("Visual Feedback")]
+    [Header("Efek 1 (Misal Plus / Buff)")]
+    public MathGateType primaryGateType = MathGateType.MultiplyATK;
+    public float primaryValue = 2f;
+
+    [Header("Efek 2 (Misal Minus / Debuff dalam 1 Gate)")]
+    public bool useSecondaryEffect = true;
+    public MathGateType secondaryGateType = MathGateType.SubSpeed;
+    public float secondaryValue = 2f;
+
+    [Header("Custom Label & Settings")]
+    public string customLabel = "";
+
+    [Header("Status Gerbang")]
+    public bool isUsed = false;
+
+    [Header("UI Text Mesh")]
     public TextMesh labelText;
-    private bool isCoolingDown = false;
+
     private Collider col;
     private Renderer rend;
 
@@ -34,72 +46,97 @@ public class MathGate : MonoBehaviour
     {
         col = GetComponent<Collider>();
         rend = GetComponent<Renderer>();
+        
+        SetupTextMesh();
         UpdateVisuals();
     }
 
-    public void Setup(MathGateType type, float val, string customTxt = "", float secVal = 0f)
+    private void OnValidate()
     {
-        gateType = type;
-        value = val;
-        secondaryValue = secVal;
-        customLabel = customTxt;
+        SetupTextMesh();
         UpdateVisuals();
     }
 
-    public void UpdateVisuals()
+    /// <summary>
+    /// Memastikan TextMesh selalu muncul di DEPAN papan dan mudah dibaca dari kamera
+    /// </summary>
+    private void SetupTextMesh()
     {
         if (labelText == null)
             labelText = GetComponentInChildren<TextMesh>();
 
+        if (labelText != null)
+        {
+            labelText.anchor = TextAnchor.MiddleCenter;
+            labelText.alignment = TextAlignment.Center;
+            labelText.fontSize = 48;
+            labelText.characterSize = 0.08f;
+
+            // Memajukan posisi teks sedikit ke depan permukaan papan agar tidak terbenam/hilang
+            labelText.transform.localPosition = new Vector3(0f, 0f, -0.15f);
+
+            // Diputar 180 derajat agar terbaca dari arah kamera Player
+            labelText.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        }
+    }
+
+    public void Setup(MathGateType type, float val, string customTxt = "", float secVal = 0f)
+    {
+        primaryGateType = type;
+        primaryValue = val;
+        
+        if (secVal != 0f)
+        {
+            useSecondaryEffect = true;
+            secondaryValue = secVal;
+        }
+
+        customLabel = customTxt;
+        UpdateVisuals();
+    }
+
+    public void SetupDual(MathGateType primaryType, float primaryVal, MathGateType secondaryType, float secondaryVal, string customTxt = "")
+    {
+        primaryGateType = primaryType;
+        primaryValue = primaryVal;
+        useSecondaryEffect = true;
+        secondaryGateType = secondaryType;
+        secondaryValue = secondaryVal;
+        customLabel = customTxt;
+        UpdateVisuals();
+    }
+
+    // ⭐ TAMBAHAN METHOD ALIAS SUPAYA MENYESUAIKAN DENGAN BUILDER ⭐
+    public void SetupDouble(MathGateType primaryType, float primaryVal, MathGateType secondaryType, float secondaryVal, string customTxt = "")
+    {
+        SetupDual(primaryType, primaryVal, secondaryType, secondaryVal, customTxt);
+    }
+
+    public void UpdateVisuals()
+    {
+        if (labelText == null) SetupTextMesh();
+
         string display = customLabel;
-        Color gateColor = Color.cyan;
+        Color gateColor = isUsed ? new Color(0.2f, 0.2f, 0.2f, 0.3f) : new Color(0.9f, 0.45f, 0.1f, 0.85f);
 
         if (string.IsNullOrEmpty(display))
         {
-            switch (gateType)
+            string primaryStr = GetEffectString(primaryGateType, primaryValue);
+            
+            if (useSecondaryEffect)
             {
-                case MathGateType.AddHP:
-                    display = $"+{value} HP";
-                    gateColor = new Color(0.2f, 0.9f, 0.3f, 0.7f); // Hijau cerah
-                    break;
-                case MathGateType.SubHP:
-                    display = $"-{value} HP";
-                    gateColor = new Color(0.8f, 0.1f, 0.2f, 0.7f); // Merah tua
-                    break;
-                case MathGateType.MultiplyATK:
-                    display = $"x{value} ATK";
-                    gateColor = new Color(1.0f, 0.45f, 0.1f, 0.7f); // Oranye
-                    break;
-                case MathGateType.DivideATK:
-                    display = $"/{value} ATK";
-                    gateColor = new Color(0.5f, 0.5f, 0.5f, 0.7f); // Abu-abu
-                    break;
-                case MathGateType.AddSpeed:
-                    display = $"+{value} SPD";
-                    gateColor = new Color(0.1f, 0.8f, 1.0f, 0.7f); // Cyan
-                    break;
-                case MathGateType.SubSpeed:
-                    display = $"-{value} SPD";
-                    gateColor = new Color(0.6f, 0.2f, 0.8f, 0.7f); // Ungu
-                    break;
-                case MathGateType.CustomRisk:
-                    display = $"+{value} SPD\n-{secondaryValue} HP";
-                    gateColor = new Color(0.9f, 0.2f, 0.7f, 0.7f); // Magenta
-                    break;
+                string secondaryStr = GetEffectString(secondaryGateType, secondaryValue);
+                display = $"{primaryStr}\n{secondaryStr}";
             }
-        }
-        else
-        {
-            // Jika ada custom label
-            if (gateType == MathGateType.AddHP || gateType == MathGateType.AddSpeed || gateType == MathGateType.MultiplyATK)
-                gateColor = new Color(0.2f, 0.9f, 0.4f, 0.7f);
             else
-                gateColor = new Color(0.85f, 0.2f, 0.2f, 0.7f);
+            {
+                display = primaryStr;
+            }
         }
 
         if (labelText != null)
         {
-            labelText.text = display;
+            labelText.text = isUsed ? "CLOSED" : display;
         }
 
         if (rend != null)
@@ -108,49 +145,76 @@ public class MathGate : MonoBehaviour
         }
     }
 
+    private string GetEffectString(MathGateType type, float val)
+    {
+        switch (type)
+        {
+            case MathGateType.AddHP: return $"+{val} HP";
+            case MathGateType.SubHP: return $"-{val} HP";
+            case MathGateType.MultiplyATK: return $"x{val} ATK";
+            case MathGateType.DivideATK: return $"/{val} ATK";
+            case MathGateType.AddSpeed: return $"+{val} SPD";
+            case MathGateType.SubSpeed: return $"-{val} SPD";
+            default: return "";
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        if (isCoolingDown) return;
+        if (isUsed) return;
 
         if (other.CompareTag("Player") || other.name.Contains("Player") || other.CompareTag("Enemy") || other.name.Contains("Enemy"))
         {
+            // Terapkan efek (Plus & Minus sekaligus) ke Player
             ApplyMathEffect(other.gameObject);
-            StartCoroutine(CooldownRoutine());
+            
+            // Kunci gerbang ini DAN gerbang pasangannya (sebelahnya)
+            DisableGate();
+            if (pairedGate != null)
+            {
+                pairedGate.DisableGate();
+            }
         }
     }
 
     private void ApplyMathEffect(GameObject target)
     {
-        Debug.Log($"<color=yellow>[MathGate]</color> {target.name} melewati gate: <b>{labelText?.text?.Replace("\n", " ")}</b>!");
+        Debug.Log($"<color=yellow>[MathGate]</color> {target.name} memilih gerbang: {labelText?.text?.Replace("\n", " ")}");
 
         PlayerStats stats = target.GetComponent<PlayerStats>();
         if (stats == null) stats = target.GetComponentInParent<PlayerStats>();
+        
         if (stats != null)
         {
-            stats.ApplyGateEffect(gateType, value, secondaryValue);
+            // Terapkan Efek 1 (misal: x2 ATK)
+            stats.ApplySingleGateEffect(primaryGateType, primaryValue);
+
+            // Terapkan Efek 2 (misal: -2 SPD)
+            if (useSecondaryEffect)
+            {
+                stats.ApplySingleGateEffect(secondaryGateType, secondaryValue);
+            }
         }
     }
 
-    private System.Collections.IEnumerator CooldownRoutine()
+    /// <summary>
+    /// Mematikan gerbang dan menampilkan teks CLOSED
+    /// </summary>
+    public void DisableGate()
     {
-        isCoolingDown = true;
+        isUsed = true;
         if (col != null) col.enabled = false;
+        
         if (rend != null)
         {
             Color c = rend.material.color;
-            c.a = 0.15f;
+            c.a = 0.2f;
             rend.material.color = c;
         }
-
-        yield return new WaitForSeconds(cooldownSeconds);
-
-        if (rend != null)
+        
+        if (labelText != null)
         {
-            Color c = rend.material.color;
-            c.a = 0.7f;
-            rend.material.color = c;
+            labelText.text = "CLOSED";
         }
-        if (col != null) col.enabled = true;
-        isCoolingDown = false;
     }
 }

@@ -2,8 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Mengelola status Player (HP, ATK, Speed) dan menghubungkannya dengan UI Health Panel.
-/// Pasang script ini pada GameObject Player.
+/// Mengelola status Player (HP, ATK, Speed) dan menghubungkannya dengan UI Panel.
 /// </summary>
 public class PlayerStats : MonoBehaviour
 {
@@ -15,7 +14,7 @@ public class PlayerStats : MonoBehaviour
     public float attackPower = 10f;
     public float moveSpeedMultiplier = 1f;
 
-    [Header("UI References (Otomatis dicari jika kosong)")]
+    [Header("UI References")]
     public Slider healthSlider;
     public Text hpText;
     public Text statsText;
@@ -34,9 +33,6 @@ public class PlayerStats : MonoBehaviour
         UpdateUI();
     }
 
-    /// <summary>
-    /// Otomatis mencari komponen UI di Scene jika belum di-assign di Inspector
-    /// </summary>
     public void FindUIReferences()
     {
         if (healthSlider == null)
@@ -58,9 +54,6 @@ public class PlayerStats : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Dipanggil saat Player terkena serangan Enemy
-    /// </summary>
     public void TakeDamage(float damage)
     {
         currentHP = Mathf.Clamp(currentHP - damage, 0f, maxHP);
@@ -75,9 +68,9 @@ public class PlayerStats : MonoBehaviour
     }
 
     /// <summary>
-    /// Dipanggil saat Player melewati Math Gate
+    /// Mengeksekusi satu jenis efek gerbang (bisa dipanggil berurutan untuk efek ganda)
     /// </summary>
-    public void ApplyGateEffect(MathGateType type, float value, float secondaryValue = 0f)
+    public void ApplySingleGateEffect(MathGateType type, float value)
     {
         switch (type)
         {
@@ -118,25 +111,17 @@ public class PlayerStats : MonoBehaviour
                 }
                 Debug.Log($"<color=purple>[Player Slow]</color> -{value} SPD!");
                 break;
-
-            case MathGateType.CustomRisk:
-                // +Speed tapi -HP
-                if (playerController != null)
-                {
-                    playerController.walkSpeed += value;
-                    playerController.sprintSpeed += value;
-                }
-                TakeDamage(secondaryValue);
-                Debug.Log($"<color=magenta>[Player High Risk]</color> +{value} SPD & -{secondaryValue} HP!");
-                break;
         }
 
         UpdateUI();
     }
 
-    /// <summary>
-    /// Memperbarui tampilan bar dan teks UI
-    /// </summary>
+    // Kompatibilitas fungsi lama
+    public void ApplyGateEffect(MathGateType type, float value, float secondaryValue = 0f)
+    {
+        ApplySingleGateEffect(type, value);
+    }
+
     public void UpdateUI()
     {
         if (healthSlider != null)
@@ -160,6 +145,5 @@ public class PlayerStats : MonoBehaviour
     private void Die()
     {
         Debug.Log("<color=red><b>[GAME OVER]</b> Player telah dikalahkan!</color>");
-        // Tambahkan efek ragdoll / reload scene jika diinginkan
     }
 }
