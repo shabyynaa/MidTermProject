@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Controller pergerakan Player dengan WASD / Tombol Panah.
+/// Controller pergerakan Player dengan WASD + Space untuk Attack + Klik Kiri untuk Take Item.
 /// Membutuhkan komponen CharacterController pada GameObject Player.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
@@ -20,19 +20,33 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Gravitasi agar karakter menempel di lantai")]
     public float gravity = 20f;
 
+    [Header("Combat Settings (Tombol Space)")]
+    [Tooltip("Jarak maksimal serangan ke musuh")]
+    public float attackRange = 2f;
+
+    [Tooltip("Damage yang dihasilkan per serangan")]
+    public float attackDamage = 25f;
+
+    [Tooltip("Jeda waktu antar serangan (cooldown dalam detik)")]
+    public float attackCooldown = 0.8f;
+    private float lastAttackTime = 0f;
+
+    [Header("Interaction / Take Item Settings (Klik Kiri Mouse)")]
+    [Tooltip("Jarak maksimal untuk mengambil barang")]
+    public float interactRange = 2.5f;
+
     [Header("Optional Animation")]
     public Animator animator;
 
     private CharacterController controller;
     private Vector3 moveDirection;
     private float currentSpeed;
-    private float verticalVelocity = 0f; // Kecepatan vertikal dipisah agar tidak menumpuk
+    private float verticalVelocity = 0f;
 
     private void Start()
     {
         controller = GetComponent<CharacterController>();
 
-        // Otomatis cari Animator jika belum di-assign di Inspector
         if (animator == null)
         {
             animator = GetComponentInChildren<Animator>();
@@ -41,41 +55,48 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // 1. Ambil Input dari WASD atau Tombol Panah
+        // 1. Handle Pergerakan (WASD / Panah)
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical   = Input.GetAxisRaw("Vertical");
 
         Vector3 inputDir = new Vector3(horizontal, 0f, vertical).normalized;
 
-        // 2. Cek apakah menekan Shift untuk Sprint
         bool isSprinting = Input.GetKey(KeyCode.LeftShift);
         currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
 
-        // 3. Gerakan relatif terhadap arah pandangan mata (FPS Movement)
-        // W/S = Maju/Mundur mengikuti transform.forward, A/D = Melangkah samping mengikuti transform.right
         Vector3 move = (transform.right * horizontal + transform.forward * vertical).normalized;
         moveDirection = move * currentSpeed;
 
-        // 4. Gravitasi: Reset saat grounded, akumulasi saat melayang
+        // 2. Gravitasi
         if (controller.isGrounded)
         {
-            verticalVelocity = -2f; // Dorong kecil ke bawah agar selalu menempel lantai
+            verticalVelocity = -2f;
         }
         else
         {
-            verticalVelocity -= gravity * Time.deltaTime; // Jatuh bebas
+            verticalVelocity -= gravity * Time.deltaTime;
         }
 
-        // 5. Gabungkan horizontal + vertikal lalu gerakkan
         Vector3 finalMove = new Vector3(moveDirection.x, verticalVelocity, moveDirection.z);
         controller.Move(finalMove * Time.deltaTime);
 
-        // 6. Update Animasi (Jika ada parameter di Animator)
+        // 3. Tombol Space -> Attack Enemy (Jika Jarak Dekat)
+        if (Input.GetKeyDown(KeyCode.Space) && Time.time >= lastAttackTime + attackCooldown)
+        {
+            TryAttackEnemy();
+        }
+
+        // 4. Tombol Klik Kiri Mouse (Mouse 0) -> Take / Pick Up Item
+        if (Input.GetMouseButtonDown(0))
+        {
+            TryTakeItem();
+        }
+
+        // 5. Update Animasi
         if (animator != null)
         {
             float speedPercent = inputDir.magnitude * (isSprinting ? 1f : 0.5f);
             
-            // Coba set parameter umum jika ada (Speed / IsWalking / IsRunning)
             if (HasParameter("Speed", animator))
                 animator.SetFloat("Speed", speedPercent);
             
@@ -87,7 +108,78 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // Helper untuk mengecek apakah parameter animator tersedia
+    /// <summary>
+    /// Logika Menyerang Musuh (Space)
+    /// </summary>
+    private void TryAttackEnemy()
+    {
+        lastAttackTime = Time.time;
+
+        // Trigger animasi Attack jika ada di Animator
+        if (animator != null && HasParameter("Attack", animator))
+        {
+            animator.SetTrigger("Attack");
+        }
+
+        // Cari musuh di area depan player dalam jangkauan attackRange
+        Vector3 attackCenter = transform.position + transform.forward * 1f;
+        Collider[] hitEnemies = Physics.OverlapSphere(attackCenter, attackRange);
+
+        bool hitAny = false;
+        foreach (Collider col in hitEnemies)
+        {
+            if (col.gameObject == gameObject) continue; // Abaikan diri sendiri
+
+            if (col.CompareTag("Enemy") || col.name.ToLower().Contains("skeleton") || col.name.ToLower().Contains("enemy"))
+            {
+                hitAny = true;
+                Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {col.name}");
+
+                // Contoh pemanggilan komponen Health musuh (sesuai script yang kamu pakai):
+                // var enemyHealth = col.GetComponent<EnemyHealth>();
+                // if (enemyHealth != null) { enemyHealth.TakeDamage(attackDamage); }
+            }
+        }
+
+        if (!hitAny)
+        {
+            Debug.Log("<color=yellow>[Attack]</color> Menyerang angin (tidak ada musuh di dekat player).");
+        }
+    }
+
+    /// <summary>
+    /// Logika Mengambil Barang / Item (Klik Kiri Mouse)
+    /// </summary>
+    private void TryTakeItem()
+    {
+        // Gunakan Raycast dari posisi kamera / mata ke arah depan
+        Camera mainCam = Camera.main;
+        Ray ray = mainCam != null ? mainCam.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f)) 
+                                  : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, interactRange))
+        {
+            GameObject obj = hit.collider.gameObject;
+
+            // Cek apakah objek ber-tag Item/Interactable atau namanya mengandung kata item/chest/collectible
+            if (obj.CompareTag("Item") || obj.CompareTag("Interactable") || 
+                obj.name.ToLower().Contains("item") || obj.name.ToLower().Contains("chest") || obj.name.ToLower().Contains("coin"))
+            {
+                Debug.Log($"<color=cyan>[Take Item]</color> Berhasil mengambil item: {obj.name}");
+
+                // Trigger animasi Take/Interact jika ada
+                if (animator != null && HasParameter("Take", animator))
+                {
+                    animator.SetTrigger("Take");
+                }
+
+                // Contoh logika mengambil barang (misal: dimasukkan ke inventori atau langsung dihancurkan/di-pickup)
+                Destroy(obj); 
+            }
+        }
+    }
+
+    // Helper untuk mengecek parameter animator
     private bool HasParameter(string paramName, Animator anim)
     {
         foreach (AnimatorControllerParameter param in anim.parameters)
@@ -95,5 +187,17 @@ public class PlayerController : MonoBehaviour
             if (param.name == paramName) return true;
         }
         return false;
+    }
+
+    // Menampilkan jangkauan Attack (Merah) & Take Item (Biru) di Scene View
+    private void OnDrawGizmosSelected()
+    {
+        // Jangkauan Attack (Merah)
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position + transform.forward * 1f, attackRange);
+
+        // Jangkauan Take Item (Biru)
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawRay(transform.position + Vector3.up * 1.5f, transform.forward * interactRange);
     }
 }
