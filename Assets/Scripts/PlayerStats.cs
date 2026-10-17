@@ -77,7 +77,7 @@ public class PlayerStats : MonoBehaviour
     /// <summary>
     /// Dipanggil saat Player melewati Math Gate
     /// </summary>
-    public void ApplyGateEffect(MathGateType type, float value)
+    public void ApplyGateEffect(MathGateType type, float value, float secondaryValue = 0f)
     {
         switch (type)
         {
@@ -86,9 +86,19 @@ public class PlayerStats : MonoBehaviour
                 Debug.Log($"<color=green>[Player Heal]</color> +{value} HP! HP sekarang: {currentHP}");
                 break;
 
+            case MathGateType.SubHP:
+                TakeDamage(value);
+                Debug.Log($"<color=red>[Player Curse]</color> -{value} HP! Sisa HP: {currentHP}");
+                break;
+
             case MathGateType.MultiplyATK:
-                attackPower *= value;
+                attackPower = Mathf.Round(attackPower * value);
                 Debug.Log($"<color=orange>[Player Buff]</color> ATK x{value}! ATK sekarang: {attackPower}");
+                break;
+
+            case MathGateType.DivideATK:
+                attackPower = Mathf.Max(1f, Mathf.Round(attackPower / value));
+                Debug.Log($"<color=grey>[Player Weakness]</color> ATK /{value}! ATK sekarang: {attackPower}");
                 break;
 
             case MathGateType.AddSpeed:
@@ -97,12 +107,27 @@ public class PlayerStats : MonoBehaviour
                     playerController.walkSpeed += value;
                     playerController.sprintSpeed += value;
                 }
-                moveSpeedMultiplier += (value * 0.1f);
                 Debug.Log($"<color=cyan>[Player Speed]</color> +{value} SPD!");
                 break;
 
-            case MathGateType.TrapDamage:
-                TakeDamage(value);
+            case MathGateType.SubSpeed:
+                if (playerController != null)
+                {
+                    playerController.walkSpeed = Mathf.Max(2f, playerController.walkSpeed - value);
+                    playerController.sprintSpeed = Mathf.Max(3f, playerController.sprintSpeed - value);
+                }
+                Debug.Log($"<color=purple>[Player Slow]</color> -{value} SPD!");
+                break;
+
+            case MathGateType.CustomRisk:
+                // +Speed tapi -HP
+                if (playerController != null)
+                {
+                    playerController.walkSpeed += value;
+                    playerController.sprintSpeed += value;
+                }
+                TakeDamage(secondaryValue);
+                Debug.Log($"<color=magenta>[Player High Risk]</color> +{value} SPD & -{secondaryValue} HP!");
                 break;
         }
 

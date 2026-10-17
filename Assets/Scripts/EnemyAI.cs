@@ -14,7 +14,7 @@ public enum EnemyState
 
 /// <summary>
 /// AI Enemy dengan 4 Waypoint Patroli (W1-W4), Chase, Attack, dan Flee ke Safe Point.
-/// Membutuhkan komponen NavMeshAgent pada GameObject Enemy.
+/// Mendukung animasi jalan/lari otomatis agar seluruh tubuh bergerak (bukan cuma kepala).
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class EnemyAI : MonoBehaviour
@@ -25,19 +25,22 @@ public class EnemyAI : MonoBehaviour
     [Header("Stats")]
     public float maxHP = 50f;
     public float currentHP;
-    public float fleeHPThreshold = 15f; // Flee jika HP <= 15
+    public float fleeHPThreshold = 15f;
     public float attackDamage = 10f;
     public float attackCooldown = 1.5f;
 
     [Header("Detection & Combat Ranges")]
-    public float detectRadius = 8f;   // Jarak melihat Player
-    public float attackRadius = 1.8f;  // Jarak serang
+    public float detectRadius = 12f;   // Jarak melihat Player
+    public float attackRadius = 2.0f;  // Jarak serang
     public float patrolWaitTime = 2f;  // Istirahat di setiap waypoint
 
     [Header("Navigation Points (Otomatis dicari jika kosong)")]
-    public Transform[] patrolWaypoints; // W1, W2, W3, W4
+    public Transform[] patrolWaypoints;
     public Transform safePoint;
     public Transform playerTarget;
+
+    [Header("Optional Animation")]
+    public Animator animator;
 
     private NavMeshAgent agent;
     private int currentWaypointIndex = 0;
@@ -48,14 +51,24 @@ public class EnemyAI : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         currentHP = maxHP;
+
+        // Pastikan NavMeshAgent mengontrol seluruh badan Enemy
+        if (agent != null)
+        {
+            agent.updateRotation = true;
+            agent.updatePosition = true;
+        }
+
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+        }
     }
 
     private void Start()
     {
         FindSceneReferences();
-
-        // Tunda inisialisasi patroli sedikit agar NavMesh selesai diinisialisasi
-        Invoke(nameof(BeginPatrol), 0.2f);
+        Invoke(nameof(BeginPatrol), 0.3f);
     }
 
     private void BeginPatrol()
@@ -66,13 +79,11 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Wrapper aman untuk NavMeshAgent.SetDestination agar tidak error jika belum di NavMesh
-    /// </summary>
     private void SetAgentDestination(Vector3 destination)
     {
         if (agent != null && agent.isOnNavMesh && agent.isActiveAndEnabled)
         {
+            agent.isStopped = false;
             agent.SetDestination(destination);
         }
     }
@@ -98,21 +109,19 @@ public class EnemyAI : MonoBehaviour
                 HandleFlee();
                 break;
         }
+
+        // 3. Update Animasi Bergerak pada Seluruh Tubuh
+        UpdateAnimation();
     }
 
-    /// <summary>
-    /// Logika transisi state (Behavior Logic)
-    /// </summary>
     private void EvaluateState()
     {
-        // Kondisi 1: Jika darah rendah -> Flee ke Safe Point
         if (currentHP <= fleeHPThreshold)
         {
             currentState = EnemyState.Flee;
             return;
         }
 
-        // Hitung jarak ke Player jika Player ada di scene
         if (playerTarget != null)
         {
             float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
@@ -136,33 +145,28 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    // --- BEHAVIOR: PATROL (W1 -> W2 -> W3 -> W4 -> Loop) ---
+    // --- BEHAVIOR: PATROL ---
     private void HandlePatrol()
     {
+        if (!agent.isOnNavMesh) return;
         agent.speed = 3.5f;
 
         if (patrolWaypoints == null || patrolWaypoints.Length == 0) return;
 
-        // Cek apakah NavMeshAgent aktif dan berada di atas NavMesh
-        if (!agent.isOnNavMesh) return;
-
-        // Cek apakah sudah mendekati waypoint tujuan saat ini
-        if (!agent.pathPending && agent.hasPath && agent.remainingDistance <= agent.stoppingDistance + 0.3f)
+        if (!agent.pathPending && agent.hasPath && agent.remainingDistance <= agent.stoppingDistance + 0.4f)
         {
             waitTimer += Time.deltaTime;
 
-            // Istirahat sejenak di waypoint sebelum lanjut ke titik berikutnya
             if (waitTimer >= patrolWaitTime)
             {
                 currentWaypointIndex = (currentWaypointIndex + 1) % patrolWaypoints.Length;
                 SetAgentDestination(patrolWaypoints[currentWaypointIndex].position);
                 waitTimer = 0f;
-                Debug.Log($"<color=cyan>[Enemy Patrol]</color> Menuju Waypoint W{currentWaypointIndex + 1}: {patrolWaypoints[currentWaypointIndex].name}");
+                Debug.Log($"<color=cyan>[Enemy Patrol]</color> Menuju Waypoint W{currentWaypointIndex + 1}");
             }
         }
         else if (!agent.hasPath)
         {
-            // Jika belum punya tujuan, set ke waypoint sekarang
             SetAgentDestination(patrolWaypoints[currentWaypointIndex].position);
         }
     }
@@ -171,7 +175,7 @@ public class EnemyAI : MonoBehaviour
     private void HandleChase()
     {
         if (!agent.isOnNavMesh) return;
-        agent.speed = 5.5f;
+        agent.speed = 5.5f; // Lari kencang
         if (playerTarget != null)
         {
             SetAgentDestination(playerTarget.position);
@@ -182,15 +186,16 @@ public class EnemyAI : MonoBehaviour
     private void HandleAttack()
     {
         if (!agent.isOnNavMesh) return;
-        agent.speed = 0f;
+        agent.isStopped = true;
 
         if (playerTarget != null)
         {
+            // Tatap arah Player dengan seluruh tubuh
             Vector3 lookDir = (playerTarget.position - transform.position).normalized;
             lookDir.y = 0f;
             if (lookDir != Vector3.zero)
             {
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), Time.deltaTime * 10f);
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookDir), Time.deltaTime * 8f);
             }
 
             if (Time.time >= nextAttackTime)
@@ -201,6 +206,12 @@ public class EnemyAI : MonoBehaviour
                     playerStats.TakeDamage(attackDamage);
                     Debug.Log($"<color=red>[Enemy Attack]</color> Memukul Player sebesar {attackDamage} Damage!");
                 }
+
+                if (animator != null && HasParameter("Attack", animator))
+                {
+                    animator.SetTrigger("Attack");
+                }
+
                 nextAttackTime = Time.time + attackCooldown;
             }
         }
@@ -210,7 +221,7 @@ public class EnemyAI : MonoBehaviour
     private void HandleFlee()
     {
         if (!agent.isOnNavMesh) return;
-        agent.speed = 6.0f;
+        agent.speed = 6.0f; // Lari kabur sangat cepat
 
         if (safePoint != null)
         {
@@ -218,15 +229,37 @@ public class EnemyAI : MonoBehaviour
 
             if (Vector3.Distance(transform.position, safePoint.position) <= 2f)
             {
-                currentHP += Time.deltaTime * 3f;
-                Debug.Log($"<color=yellow>[Enemy Flee]</color> Bersembunyi di Safe Point! HP: {currentHP:F1}");
+                currentHP = Mathf.Min(maxHP, currentHP + Time.deltaTime * 3f);
             }
         }
     }
 
-    /// <summary>
-    /// Mencari otomatis Player, Waypoint W1-W4, dan SafePoint di scene
-    /// </summary>
+    private void UpdateAnimation()
+    {
+        if (animator == null || agent == null) return;
+
+        float currentVelocity = agent.velocity.magnitude;
+        bool isMoving = currentVelocity > 0.2f;
+
+        if (HasParameter("Speed", animator))
+            animator.SetFloat("Speed", currentVelocity);
+
+        if (HasParameter("IsWalking", animator))
+            animator.SetBool("IsWalking", isMoving && agent.speed < 5f);
+
+        if (HasParameter("IsRunning", animator))
+            animator.SetBool("IsRunning", isMoving && agent.speed >= 5f);
+    }
+
+    private bool HasParameter(string paramName, Animator anim)
+    {
+        foreach (AnimatorControllerParameter param in anim.parameters)
+        {
+            if (param.name == paramName) return true;
+        }
+        return false;
+    }
+
     public void FindSceneReferences()
     {
         if (playerTarget == null)
@@ -236,7 +269,6 @@ public class EnemyAI : MonoBehaviour
             if (p != null) playerTarget = p.transform;
         }
 
-        // Cari 4 Titik Patroli
         if (patrolWaypoints == null || patrolWaypoints.Length == 0)
         {
             Transform w1 = GameObject.Find("PatrolPoint_W1")?.transform;
@@ -250,14 +282,12 @@ public class EnemyAI : MonoBehaviour
             }
         }
 
-        // Cari Safe Point
         if (safePoint == null)
         {
             safePoint = GameObject.Find("SafePoint")?.transform;
         }
     }
 
-    // Gambar lingkaran jarak deteksi & serang di Scene View agar mudah dilihat
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;

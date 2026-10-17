@@ -51,17 +51,10 @@ public class PlayerController : MonoBehaviour
         bool isSprinting = Input.GetKey(KeyCode.LeftShift);
         currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
 
-        // 3. Hitung arah gerak horizontal
-        if (inputDir.magnitude >= 0.1f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(inputDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-            moveDirection = inputDir * currentSpeed;
-        }
-        else
-        {
-            moveDirection = Vector3.zero;
-        }
+        // 3. Gerakan relatif terhadap arah pandangan mata (FPS Movement)
+        // W/S = Maju/Mundur mengikuti transform.forward, A/D = Melangkah samping mengikuti transform.right
+        Vector3 move = (transform.right * horizontal + transform.forward * vertical).normalized;
+        moveDirection = move * currentSpeed;
 
         // 4. Gravitasi: Reset saat grounded, akumulasi saat melayang
         if (controller.isGrounded)
