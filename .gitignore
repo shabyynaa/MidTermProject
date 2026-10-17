@@ -74,3 +74,5 @@ ehthumbs.db
 *.slnx
 Assets/_Recovery/
 Assets/_Recovery.meta
+.plastic/
+ignore.conf

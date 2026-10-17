@@ -51,6 +51,26 @@ public class PlayerController : MonoBehaviour
         {
             animator = GetComponentInChildren<Animator>();
         }
+
+        if (animator == null)
+        {
+            animator = gameObject.AddComponent<Animator>();
+        }
+
+        // Pastikan Animator Controller Kachujin terpasang
+        if (animator != null && animator.runtimeAnimatorController == null)
+        {
+#if UNITY_EDITOR
+            RuntimeAnimatorController rac = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Player/Kachujin_AnimatorController.controller");
+            if (rac != null) animator.runtimeAnimatorController = rac;
+#endif
+        }
+
+        // Pastikan tinggi badan Kachujin gagah dan proporsional (skala 1.3x)
+        if (transform.localScale.x < 1.1f)
+        {
+            transform.localScale = new Vector3(1.3f, 1.3f, 1.3f);
+        }
     }
 
     private void Update()
@@ -95,16 +115,17 @@ public class PlayerController : MonoBehaviour
         // 5. Update Animasi
         if (animator != null)
         {
-            float speedPercent = inputDir.magnitude * (isSprinting ? 1f : 0.5f);
+            bool isMoving = inputDir.magnitude > 0.1f;
+            float speedPercent = isMoving ? (isSprinting ? 1f : 0.5f) : 0f;
             
             if (HasParameter("Speed", animator))
                 animator.SetFloat("Speed", speedPercent);
             
             if (HasParameter("IsWalking", animator))
-                animator.SetBool("IsWalking", inputDir.magnitude > 0.1f && !isSprinting);
+                animator.SetBool("IsWalking", isMoving);
 
             if (HasParameter("IsRunning", animator))
-                animator.SetBool("IsRunning", inputDir.magnitude > 0.1f && isSprinting);
+                animator.SetBool("IsRunning", isMoving && isSprinting);
         }
     }
 
