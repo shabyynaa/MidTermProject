@@ -142,23 +142,27 @@ public class PlayerController : MonoBehaviour
             animator.SetTrigger("Attack");
         }
 
+        PlayerStats stats = GetComponent<PlayerStats>();
+        float dmg = stats != null ? Mathf.Max(attackDamage, stats.attackPower) : attackDamage;
+
         // Cari musuh di area depan player dalam jangkauan attackRange
         Vector3 attackCenter = transform.position + transform.forward * 1f;
         Collider[] hitEnemies = Physics.OverlapSphere(attackCenter, attackRange);
 
+        var damagedEnemies = new System.Collections.Generic.HashSet<EnemyAI>();
         bool hitAny = false;
+
         foreach (Collider col in hitEnemies)
         {
-            if (col.gameObject == gameObject) continue; // Abaikan diri sendiri
+            if (col.gameObject == gameObject) continue;
 
-            if (col.CompareTag("Enemy") || col.name.ToLower().Contains("skeleton") || col.name.ToLower().Contains("enemy"))
+            EnemyAI enemyAI = col.GetComponentInParent<EnemyAI>();
+            if (enemyAI != null && !damagedEnemies.Contains(enemyAI))
             {
+                damagedEnemies.Add(enemyAI);
                 hitAny = true;
-                Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {col.name}");
-
-                // Contoh pemanggilan komponen Health musuh (sesuai script yang kamu pakai):
-                // var enemyHealth = col.GetComponent<EnemyHealth>();
-                // if (enemyHealth != null) { enemyHealth.TakeDamage(attackDamage); }
+                enemyAI.TakeDamage(dmg);
+                Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {enemyAI.name} ({dmg} DMG)");
             }
         }
 
