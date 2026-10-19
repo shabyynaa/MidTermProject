@@ -25,7 +25,7 @@ public class PlayerController : MonoBehaviour
     public float attackRange = 2f;
 
     [Tooltip("Damage yang dihasilkan per serangan")]
-    public float attackDamage = 25f;
+    public float attackDamage = 10f;
 
     [Tooltip("Jeda waktu antar serangan (cooldown dalam detik)")]
     public float attackCooldown = 0.8f;
@@ -106,8 +106,8 @@ public class PlayerController : MonoBehaviour
             TryAttackEnemy();
         }
 
-        // 4. Tombol Klik Kiri Mouse (Mouse 0) -> Take / Pick Up Item
-        if (Input.GetMouseButtonDown(0))
+        // 4. Tombol Klik Kiri Mouse (Mouse 0) atau tombol E -> Take / Pick Up / Interact
+        if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.E))
         {
             TryTakeItem();
         }
@@ -143,7 +143,7 @@ public class PlayerController : MonoBehaviour
         }
 
         PlayerStats stats = GetComponent<PlayerStats>();
-        float dmg = stats != null ? Mathf.Max(attackDamage, stats.attackPower) : attackDamage;
+        float dmg = (stats != null && stats.attackPower > 0f) ? stats.attackPower : attackDamage;
 
         // Cari musuh di area depan player dalam jangkauan attackRange
         Vector3 attackCenter = transform.position + transform.forward * 1f;
@@ -183,18 +183,61 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Logika Mengambil Barang / Item (Klik Kiri Mouse)
+    /// Logika Mengambil Barang / Kunci / Interaksi Rak (Klik Kiri Mouse / Tombol E)
     /// </summary>
     private void TryTakeItem()
     {
-        // Gunakan Raycast dari posisi kamera / mata ke arah depan
+        // 1. Prioritaskan Kunci terdekat (Hall2KeyItem) di sekitar Player
+        foreach (Collider nearby in Physics.OverlapSphere(transform.position, interactRange + 0.5f))
+        {
+            Hall2KeyItem key = nearby.GetComponentInParent<Hall2KeyItem>();
+            if (key != null && !key.isCollected && key.gameObject.activeInHierarchy)
+            {
+                Debug.Log($"<color=cyan>[Take Key]</color> Mengambil kunci: {key.name}");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                key.Collect();
+                return;
+            }
+
+            Hall2Shelf shelf = nearby.GetComponentInParent<Hall2Shelf>();
+            if (shelf != null && Hall2ChallengeManager.Instance != null && Hall2ChallengeManager.Instance.keysCarried > 0)
+            {
+                Debug.Log("<color=green>[Shelf]</color> Meletakkan kunci ke rak.");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                Hall2ChallengeManager.Instance.TryDepositKeysAtShelf();
+                return;
+            }
+        }
+
+        // 2. Gunakan Raycast dari posisi kamera / mata ke arah depan untuk objek lainnya
         Camera mainCam = Camera.main;
         Ray ray = mainCam != null ? mainCam.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f)) 
                                   : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, interactRange))
+        if (Physics.Raycast(ray, out RaycastHit hit, interactRange + 1f))
         {
             GameObject obj = hit.collider.gameObject;
+
+            Hall2KeyItem hitKey = obj.GetComponentInParent<Hall2KeyItem>();
+            if (hitKey != null && !hitKey.isCollected && hitKey.gameObject.activeInHierarchy)
+            {
+                Debug.Log($"<color=cyan>[Take Key]</color> Mengambil kunci lewat Raycast: {hitKey.name}");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                hitKey.Collect();
+                return;
+            }
+
+            Hall2Shelf hitShelf = obj.GetComponentInParent<Hall2Shelf>();
+            if (hitShelf != null && Hall2ChallengeManager.Instance != null)
+            {
+                if (Hall2ChallengeManager.Instance.keysCarried > 0)
+                {
+                    Debug.Log("<color=green>[Shelf]</color> Meletakkan kunci lewat Raycast.");
+                    if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                    Hall2ChallengeManager.Instance.TryDepositKeysAtShelf();
+                    return;
+                }
+            }
 
             // Cek apakah objek ber-tag Item/Interactable atau namanya mengandung kata item/chest/collectible
             if (obj.CompareTag("Item") || obj.CompareTag("Interactable") || 
@@ -202,13 +245,11 @@ public class PlayerController : MonoBehaviour
             {
                 Debug.Log($"<color=cyan>[Take Item]</color> Berhasil mengambil item: {obj.name}");
 
-                // Trigger animasi Take/Interact jika ada
                 if (animator != null && HasParameter("Take", animator))
                 {
                     animator.SetTrigger("Take");
                 }
 
-                // Logika mengambil barang (langsung dihancurkan/di-pickup)
                 Destroy(obj); 
             }
         }
