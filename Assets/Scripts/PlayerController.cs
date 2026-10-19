@@ -142,28 +142,37 @@ public class PlayerController : MonoBehaviour
             animator.SetTrigger("Attack");
         }
 
+        PlayerStats stats = GetComponent<PlayerStats>();
+        float dmg = stats != null ? Mathf.Max(attackDamage, stats.attackPower) : attackDamage;
+
         // Cari musuh di area depan player dalam jangkauan attackRange
         Vector3 attackCenter = transform.position + transform.forward * 1f;
         Collider[] hitEnemies = Physics.OverlapSphere(attackCenter, attackRange);
 
+        var damagedEnemies = new System.Collections.Generic.HashSet<EnemyAI>();
+        var damagedFsmEnemies = new System.Collections.Generic.HashSet<EnemyFSM>();
         bool hitAny = false;
+
         foreach (Collider col in hitEnemies)
         {
-            if (col.gameObject == gameObject) continue; // Abaikan diri sendiri
+            if (col.gameObject == gameObject) continue;
 
-            // Panggilan langsung ke EnemyFSM
-            EnemyFSM enemy = col.GetComponent<EnemyFSM>();
-            if (enemy == null)
+            EnemyAI enemyAI = col.GetComponentInParent<EnemyAI>();
+            if (enemyAI != null && !damagedEnemies.Contains(enemyAI))
             {
-                // Cek jika script EnemyFSM ada di parent objek (jika collider ada di child mesh)
-                enemy = col.GetComponentInParent<EnemyFSM>();
+                damagedEnemies.Add(enemyAI);
+                hitAny = true;
+                enemyAI.TakeDamage(dmg);
+                Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {enemyAI.name} ({dmg} DMG)");
             }
 
-            if (enemy != null && !enemy.isDead)
+            EnemyFSM enemyFsm = col.GetComponentInParent<EnemyFSM>();
+            if (enemyFsm != null && !enemyFsm.isDead && !damagedFsmEnemies.Contains(enemyFsm))
             {
+                damagedFsmEnemies.Add(enemyFsm);
                 hitAny = true;
-                enemy.TakeDamage(attackDamage);
-                Debug.Log($"<color=red>[Attack]</color> Menyerang {enemy.enemyName} sebesar {attackDamage} damage!");
+                enemyFsm.TakeDamage(dmg);
+                Debug.Log($"<color=red>[Attack]</color> Menyerang {enemyFsm.enemyName} sebesar {dmg} damage!");
             }
         }
 

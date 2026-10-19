@@ -72,8 +72,8 @@ public class MathGate : MonoBehaviour
             labelText.fontSize = 48;
             labelText.characterSize = 0.08f;
 
-            // Memajukan posisi teks sedikit ke depan permukaan papan agar tidak terbenam/hilang
-            labelText.transform.localPosition = new Vector3(0f, 0f, -0.15f);
+            // Memajukan posisi teks sedikit ke depan permukaan papan (-0.5f) agar tidak terbenam/hilang
+            labelText.transform.localPosition = new Vector3(0f, 0f, -0.65f);
 
             // Diputar 180 derajat agar terbaca dari arah kamera Player
             labelText.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
@@ -139,7 +139,7 @@ public class MathGate : MonoBehaviour
             labelText.text = isUsed ? "CLOSED" : display;
         }
 
-        if (rend != null)
+        if (rend != null && Application.isPlaying)
         {
             rend.material.color = gateColor;
         }
