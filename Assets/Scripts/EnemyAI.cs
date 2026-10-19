@@ -60,6 +60,13 @@ public class EnemyAI : MonoBehaviour
     [Tooltip("Margin aman dari dinding/pintu agar enemy tidak pernah melewati ambang pintu atau masuk koridor")]
     public float roomInnerMargin = 1.25f;
 
+    [Header("Vision & Field of View (FOV)")]
+    public bool useFieldOfView = true;
+    [Range(30f, 360f)]
+    public float fieldOfViewAngle = 140f; // FOV lebar untuk Goblin
+    public float closeAlertRadius = 2.0f; // Jarak sangat dekat (bisa sadar tanpa melihat)
+    private Light gazeLight;
+
     [Header("UI Health Bar (Otomatis tampil di atas kepala)")]
     public Slider healthBarSlider;
     public Image healthBarFillImage;
@@ -119,6 +126,25 @@ public class EnemyAI : MonoBehaviour
 
         ResolveAssignedRoomBounds();
         CacheHipsBone();
+
+        // Karakteristik Khusus Enemy Hall 2 (Goblin):
+        // 1. Bergerak lambat saat patroli
+        // 2. Memiliki Field of View (FOV) yang lebar (140 derajat)
+        // 3. Jangkauan deteksi tajam jika tidak terhalang pilar
+        // 4. HP Tangguh (120 HP) agar tidak mudah dikalahkan dalam 2 kali tebas
+        if (roomPrefix == "H2_" || name.ToLower().Contains("goblin") || name.ToLower().Contains("hall2"))
+        {
+            maxHP = 120f;
+            currentHP = 120f;
+            fleeHPThreshold = 25f;
+            patrolSpeed = 1.6f;      // Lambat saat berpatroli (sesuai instruksi)
+            chaseSpeed = 6.0f;       // Cepat saat mengejar
+            fieldOfViewAngle = 140f; // FOV lebar
+            detectRadius = 14f;      // Penglihatan jauh
+            patrolWaitTime = 2.5f;   // Berhenti sejenak di waypoint
+        }
+
+        SetupGazeLight();
     }
 
     private void CacheHipsBone()
@@ -517,9 +543,22 @@ public class EnemyAI : MonoBehaviour
         {
             currentState = EnemyState.Attack;
         }
-        else if (distToPlayer <= detectRadius)
+        else if (currentState == EnemyState.Chase)
+        {
+            // Jika sedang mengejar, terus kejar selama player masih di dalam ruangan dan dalam jarak deteksi wajar
+            if (distToPlayer <= detectRadius * 1.35f)
+            {
+                currentState = EnemyState.Chase;
+            }
+            else
+            {
+                StopChaseAndReturnToPatrol();
+            }
+        }
+        else if (CanSeePlayer())
         {
             currentState = EnemyState.Chase;
+            Debug.Log($"<color=yellow>[{name} FOV Alert]</color> Player terlihat di dalam Field of View!");
         }
         else
         {
@@ -532,6 +571,8 @@ public class EnemyAI : MonoBehaviour
                 currentState = EnemyState.Patrol;
             }
         }
+
+        UpdateGazeLightColor();
     }
 
     // --- BEHAVIOR: PATROL (Walk & Idle di Waypoint dalam ruangan) ---
@@ -921,6 +962,124 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Mengecek apakah Player berada di dalam jangkauan deteksi, sudut Field of View (FOV),
+    /// dan tidak terhalang oleh pilar atau tembok solid.
+    /// </summary>
+    public bool CanSeePlayer()
+    {
+        if (playerTarget == null) return false;
+        if (!IsPlayerInAssignedRoom()) return false;
+
+        float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
+        if (distToPlayer > detectRadius) return false;
+
+        // 1. Jika dalam jarak sangat dekat (misal di belakang tubuh musuh), musuh merasakan kehadiran player
+        if (distToPlayer <= closeAlertRadius)
+        {
+            return HasLineOfSightToPlayer();
+        }
+
+        // 2. Cek sudut Field of View (FOV)
+        if (useFieldOfView)
+        {
+            Vector3 dirToPlayer = (playerTarget.position - transform.position).normalized;
+            dirToPlayer.y = 0f;
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+
+            float angle = Vector3.Angle(forward, dirToPlayer);
+            if (angle > fieldOfViewAngle * 0.5f)
+            {
+                return false; // Berada di luar sudut pandang!
+            }
+        }
+
+        // 3. Cek garis pandang (Line of Sight) melewati pilar dan dinding solid
+        return HasLineOfSightToPlayer();
+    }
+
+    private bool HasLineOfSightToPlayer()
+    {
+        if (playerTarget == null) return false;
+
+        Vector3 eyePos = transform.position + Vector3.up * 1.5f;
+        Vector3 targetEyePos = playerTarget.position + Vector3.up * 1.4f;
+        Vector3 dir = targetEyePos - eyePos;
+        float dist = dir.magnitude;
+
+        RaycastHit[] hits = Physics.RaycastAll(eyePos, dir.normalized, dist);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.transform.root == transform.root) continue;
+            if (hit.collider.isTrigger) continue; // Abaikan trigger collider (RoomBoundary, MathGate, dsb)
+
+            // Jika menabrak Player terlebih dahulu
+            if (hit.collider.CompareTag("Player") || hit.collider.transform.root == playerTarget.root)
+            {
+                return true;
+            }
+
+            // Jika terhalang pilar atau dinding solid sebelum mencapai player
+            return false;
+        }
+
+        return true;
+    }
+
+    private void SetupGazeLight()
+    {
+        if (gazeLight != null) return;
+
+        Transform existingLight = transform.Find("GazeLight");
+        if (existingLight != null)
+        {
+            gazeLight = existingLight.GetComponent<Light>();
+            return;
+        }
+
+        // Buat cahaya sorot pandangan lembut di depan musuh agar player bisa membaca arah pandang musuh
+        GameObject lightObj = new GameObject("GazeLight");
+        lightObj.transform.SetParent(transform, false);
+        lightObj.transform.localPosition = new Vector3(0f, 1.4f, 0.4f);
+        lightObj.transform.localRotation = Quaternion.Euler(15f, 0f, 0f);
+
+        gazeLight = lightObj.AddComponent<Light>();
+        gazeLight.type = LightType.Spot;
+        gazeLight.spotAngle = Mathf.Min(fieldOfViewAngle * 0.75f, 110f);
+        gazeLight.innerSpotAngle = 40f;
+        gazeLight.range = 8.5f;
+        gazeLight.intensity = 2.2f;
+        gazeLight.color = new Color(1f, 0.9f, 0.4f); // Kuning saat patroli
+        gazeLight.shadows = LightShadows.None;
+    }
+
+    private void UpdateGazeLightColor()
+    {
+        if (gazeLight == null) return;
+
+        if (isDead)
+        {
+            gazeLight.enabled = false;
+            return;
+        }
+
+        if (currentState == EnemyState.Chase || currentState == EnemyState.Attack)
+        {
+            gazeLight.color = Color.red; // Merah saat mendeteksi / mengejar player
+            gazeLight.intensity = 3.5f;
+            gazeLight.range = 10f;
+        }
+        else
+        {
+            gazeLight.color = new Color(1f, 0.9f, 0.4f); // Kuning saat berpatroli
+            gazeLight.intensity = 2.2f;
+            gazeLight.range = 8.5f;
+        }
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
@@ -928,6 +1087,17 @@ public class EnemyAI : MonoBehaviour
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
+
+        // Gambar kerucut Field of View (FOV)
+        if (useFieldOfView)
+        {
+            Vector3 leftRay = Quaternion.Euler(0f, -fieldOfViewAngle * 0.5f, 0f) * transform.forward;
+            Vector3 rightRay = Quaternion.Euler(0f, fieldOfViewAngle * 0.5f, 0f) * transform.forward;
+
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawRay(transform.position + Vector3.up * 1.5f, leftRay * detectRadius);
+            Gizmos.DrawRay(transform.position + Vector3.up * 1.5f, rightRay * detectRadius);
+        }
 
         if (!hasValidRoomBounds)
         {
