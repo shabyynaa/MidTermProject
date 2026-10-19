@@ -130,7 +130,7 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Logika Menyerang Musuh (Space)
+    /// Logika Menyerang Musuh (Space) -> Mengurangi HP EnemyFSM
     /// </summary>
     private void TryAttackEnemy()
     {
@@ -151,14 +151,19 @@ public class PlayerController : MonoBehaviour
         {
             if (col.gameObject == gameObject) continue; // Abaikan diri sendiri
 
-            if (col.CompareTag("Enemy") || col.name.ToLower().Contains("skeleton") || col.name.ToLower().Contains("enemy"))
+            // Panggilan langsung ke EnemyFSM
+            EnemyFSM enemy = col.GetComponent<EnemyFSM>();
+            if (enemy == null)
+            {
+                // Cek jika script EnemyFSM ada di parent objek (jika collider ada di child mesh)
+                enemy = col.GetComponentInParent<EnemyFSM>();
+            }
+
+            if (enemy != null && !enemy.isDead)
             {
                 hitAny = true;
-                Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {col.name}");
-
-                // Contoh pemanggilan komponen Health musuh (sesuai script yang kamu pakai):
-                // var enemyHealth = col.GetComponent<EnemyHealth>();
-                // if (enemyHealth != null) { enemyHealth.TakeDamage(attackDamage); }
+                enemy.TakeDamage(attackDamage);
+                Debug.Log($"<color=red>[Attack]</color> Menyerang {enemy.enemyName} sebesar {attackDamage} damage!");
             }
         }
 
@@ -194,7 +199,7 @@ public class PlayerController : MonoBehaviour
                     animator.SetTrigger("Take");
                 }
 
-                // Contoh logika mengambil barang (misal: dimasukkan ke inventori atau langsung dihancurkan/di-pickup)
+                // Logika mengambil barang (langsung dihancurkan/di-pickup)
                 Destroy(obj); 
             }
         }
