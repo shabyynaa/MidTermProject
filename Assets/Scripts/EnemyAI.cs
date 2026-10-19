@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UI;
 
 /// <summary>
 /// Status Perilaku Enemy untuk Demonstrasi Game Cerdas
@@ -58,6 +59,11 @@ public class EnemyAI : MonoBehaviour
     public Bounds assignedRoomBounds;
     [Tooltip("Margin aman dari dinding/pintu agar enemy tidak pernah melewati ambang pintu atau masuk koridor")]
     public float roomInnerMargin = 1.25f;
+
+    [Header("UI Health Bar (Otomatis tampil di atas kepala)")]
+    public Slider healthBarSlider;
+    public Image healthBarFillImage;
+    private Transform healthBarCanvasTransform;
 
     [Header("Animation")]
     public Animator animator;
@@ -131,6 +137,8 @@ public class EnemyAI : MonoBehaviour
     private void Start()
     {
         FindSceneReferences();
+        EnsureOverheadHealthBar();
+        UpdateHealthUI();
         EnforceRoomBoundary();
         Invoke(nameof(BeginPatrol), 0.25f);
     }
@@ -456,6 +464,12 @@ public class EnemyAI : MonoBehaviour
             hipsBone.localPosition = new Vector3(0f, hipsLocal.y, 0f);
         }
 
+        // Arahkan Health Bar di atas kepala agar selalu menghadap kamera
+        if (healthBarCanvasTransform != null && Camera.main != null)
+        {
+            healthBarCanvasTransform.rotation = Camera.main.transform.rotation;
+        }
+
         EnforceRoomBoundary();
     }
 
@@ -642,6 +656,7 @@ public class EnemyAI : MonoBehaviour
             {
                 agent.isStopped = true;
                 currentHP = Mathf.Min(maxHP, currentHP + Time.deltaTime * 5f);
+                UpdateHealthUI();
             }
         }
         else if (playerTarget != null)
@@ -661,6 +676,7 @@ public class EnemyAI : MonoBehaviour
         if (isDead) return;
 
         currentHP = Mathf.Clamp(currentHP - damage, 0f, maxHP);
+        UpdateHealthUI();
         Debug.Log($"<color=orange>[{name}]</color> Terkena {damage} damage! Sisa HP: {currentHP}/{maxHP}");
 
         if (currentHP <= 0f)
@@ -669,11 +685,126 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Membuat World-Space Health Bar Slider otomatis di atas kepala musuh jika belum ada.
+    /// </summary>
+    private void EnsureOverheadHealthBar()
+    {
+        if (healthBarSlider != null)
+        {
+            healthBarCanvasTransform = healthBarSlider.GetComponentInParent<Canvas>()?.transform;
+            healthBarSlider.maxValue = maxHP;
+            healthBarSlider.value = currentHP;
+            return;
+        }
+
+        Transform existingCanvas = transform.Find("EnemyHealthBarCanvas");
+        if (existingCanvas != null)
+        {
+            healthBarCanvasTransform = existingCanvas;
+            healthBarSlider = existingCanvas.GetComponentInChildren<Slider>();
+            if (healthBarSlider != null && healthBarSlider.fillRect != null)
+            {
+                healthBarFillImage = healthBarSlider.fillRect.GetComponent<Image>();
+            }
+            return;
+        }
+
+        float barHeight = isBoss ? 4.4f : 3.4f;
+        CapsuleCollider cap = GetComponent<CapsuleCollider>();
+        if (cap != null && cap.height > 1f)
+        {
+            barHeight = cap.height + 0.35f;
+        }
+
+        GameObject canvasObj = new GameObject("EnemyHealthBarCanvas");
+        canvasObj.transform.SetParent(transform, false);
+        canvasObj.transform.localPosition = new Vector3(0f, barHeight, 0f);
+        canvasObj.transform.localScale = new Vector3(0.012f, 0.012f, 0.012f);
+        healthBarCanvasTransform = canvasObj.transform;
+
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
+        GameObject sliderObj = new GameObject("HealthSlider", typeof(RectTransform));
+        sliderObj.transform.SetParent(canvasObj.transform, false);
+        RectTransform sliderRect = sliderObj.GetComponent<RectTransform>();
+        sliderRect.sizeDelta = new Vector2(140f, 18f);
+
+        GameObject bgObj = new GameObject("Background", typeof(RectTransform));
+        bgObj.transform.SetParent(sliderObj.transform, false);
+        RectTransform bgRect = bgObj.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        Image bgImg = bgObj.AddComponent<Image>();
+        bgImg.color = new Color(0.18f, 0.05f, 0.05f, 0.9f);
+
+        GameObject fillArea = new GameObject("Fill Area", typeof(RectTransform));
+        fillArea.transform.SetParent(sliderObj.transform, false);
+        RectTransform fillAreaRect = fillArea.GetComponent<RectTransform>();
+        fillAreaRect.anchorMin = Vector2.zero;
+        fillAreaRect.anchorMax = Vector2.one;
+        fillAreaRect.offsetMin = new Vector2(2f, 2f);
+        fillAreaRect.offsetMax = new Vector2(-2f, -2f);
+
+        GameObject fillObj = new GameObject("Fill", typeof(RectTransform));
+        fillObj.transform.SetParent(fillArea.transform, false);
+        RectTransform fillRect = fillObj.GetComponent<RectTransform>();
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+        healthBarFillImage = fillObj.AddComponent<Image>();
+        healthBarFillImage.color = Color.green;
+
+        healthBarSlider = sliderObj.AddComponent<Slider>();
+        healthBarSlider.interactable = false;
+        healthBarSlider.transition = Selectable.Transition.None;
+        healthBarSlider.fillRect = fillRect;
+        healthBarSlider.direction = Slider.Direction.LeftToRight;
+        healthBarSlider.minValue = 0f;
+        healthBarSlider.maxValue = maxHP;
+        healthBarSlider.value = currentHP;
+    }
+
+    public void UpdateHealthUI()
+    {
+        if (healthBarSlider != null)
+        {
+            healthBarSlider.maxValue = maxHP;
+            healthBarSlider.value = currentHP;
+        }
+
+        if (healthBarFillImage != null && maxHP > 0f)
+        {
+            float healthPercent = Mathf.Clamp01(currentHP / maxHP);
+            if (healthPercent > 0.5f)
+            {
+                healthBarFillImage.color = Color.Lerp(Color.yellow, Color.green, (healthPercent - 0.5f) * 2f);
+            }
+            else
+            {
+                healthBarFillImage.color = Color.Lerp(Color.red, Color.yellow, healthPercent * 2f);
+            }
+        }
+    }
+
     private void Die()
     {
         if (isDead) return;
         isDead = true;
         currentState = EnemyState.Dead;
+
+        if (healthBarCanvasTransform != null)
+        {
+            healthBarCanvasTransform.gameObject.SetActive(false);
+        }
+        else if (healthBarSlider != null)
+        {
+            healthBarSlider.gameObject.SetActive(false);
+        }
 
         if (agent != null && agent.isOnNavMesh)
         {

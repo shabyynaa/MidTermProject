@@ -130,7 +130,7 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Logika Menyerang Musuh (Space)
+    /// Logika Menyerang Musuh (Space) -> Mengurangi HP EnemyFSM
     /// </summary>
     private void TryAttackEnemy()
     {
@@ -150,6 +150,7 @@ public class PlayerController : MonoBehaviour
         Collider[] hitEnemies = Physics.OverlapSphere(attackCenter, attackRange);
 
         var damagedEnemies = new System.Collections.Generic.HashSet<EnemyAI>();
+        var damagedFsmEnemies = new System.Collections.Generic.HashSet<EnemyFSM>();
         bool hitAny = false;
 
         foreach (Collider col in hitEnemies)
@@ -163,6 +164,15 @@ public class PlayerController : MonoBehaviour
                 hitAny = true;
                 enemyAI.TakeDamage(dmg);
                 Debug.Log($"<color=red>[Attack]</color> Menyerang musuh: {enemyAI.name} ({dmg} DMG)");
+            }
+
+            EnemyFSM enemyFsm = col.GetComponentInParent<EnemyFSM>();
+            if (enemyFsm != null && !enemyFsm.isDead && !damagedFsmEnemies.Contains(enemyFsm))
+            {
+                damagedFsmEnemies.Add(enemyFsm);
+                hitAny = true;
+                enemyFsm.TakeDamage(dmg);
+                Debug.Log($"<color=red>[Attack]</color> Menyerang {enemyFsm.enemyName} sebesar {dmg} damage!");
             }
         }
 
@@ -198,7 +208,7 @@ public class PlayerController : MonoBehaviour
                     animator.SetTrigger("Take");
                 }
 
-                // Contoh logika mengambil barang (misal: dimasukkan ke inventori atau langsung dihancurkan/di-pickup)
+                // Logika mengambil barang (langsung dihancurkan/di-pickup)
                 Destroy(obj); 
             }
         }
