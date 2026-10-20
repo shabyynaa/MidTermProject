@@ -58,7 +58,8 @@ public class MathGate : MonoBehaviour
     }
 
     /// <summary>
-    /// Memastikan TextMesh selalu muncul di DEPAN papan dan mudah dibaca dari kamera
+    /// Memastikan TextMesh selalu muncul di DEPAN papan dan mudah dibaca dari kamera.
+    /// Teks di-flip horizontal (scale X = -1) agar terbaca dengan benar dari sisi pemain.
     /// </summary>
     private void SetupTextMesh()
     {
@@ -77,6 +78,11 @@ public class MathGate : MonoBehaviour
 
             // Diputar 180 derajat agar terbaca dari arah kamera Player
             labelText.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // Flip horizontal (scale X = -1) agar teks tidak terbalik/mirror
+            Vector3 localScale = labelText.transform.localScale;
+            localScale.x = -Mathf.Abs(localScale.x);
+            labelText.transform.localScale = localScale;
         }
     }
 

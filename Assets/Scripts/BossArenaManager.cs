@@ -4,11 +4,10 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Manager Pertarungan Boss Arena: "The Abyssal Apex"
-/// 1. Mengunci gerbang masuk saat pemain melangkah ke dalam Boss Arena.
-/// 2. Menampilkan Grand Boss Health Bar di atas layar (Sinkron dengan HP Maw J Laygo).
-/// 3. Mengelola Transisi Fase 1 (Savage Hunter) -> Fase 2 (Enraged Blood Moon).
-/// 4. Membuka Peti Emas Kemenangan di Altar saat Boss mati.
-/// 5. Menampilkan Layar Kemenangan Akhir (Victory / Game Clear Modal).
+/// 1. Menampilkan Grand Boss Health Bar di atas layar (Sinkron dengan HP Maw J Laygo).
+/// 2. Mengelola Transisi Fase 1 (Savage Hunter) -> Fase 2 (Enraged Blood Moon).
+/// 3. Membuka Peti Emas Kemenangan di Altar saat Boss mati.
+/// 4. Menampilkan Layar Kemenangan Akhir (Victory / Game Clear Modal).
 /// </summary>
 public class BossArenaManager : MonoBehaviour
 {
@@ -22,8 +21,7 @@ public class BossArenaManager : MonoBehaviour
     [Header("Scene References")]
     public EnemyAI bossEnemy;
     public VictoryChest victoryChest;
-    public GameObject entranceBarrierA;
-    public GameObject entranceBarrierB;
+    // (Entrance Barrier dihapus)
 
     [Header("Boss Bar UI")]
     public GameObject bossBarPanel;
@@ -59,23 +57,33 @@ public class BossArenaManager : MonoBehaviour
         SetupBossBarUI();
         SetupVictoryModalUI();
 
-        // Barrier pintu masuk default tidak aktif sampai pemain melangkah masuk
-        if (entranceBarrierA != null) entranceBarrierA.SetActive(false);
-        if (entranceBarrierB != null) entranceBarrierB.SetActive(false);
+        // Reset state encounter
+        ResetEncounter();
+    }
+
+    // Fungsi untuk mereset status encounter saat respawn atau restart
+    public void ResetEncounter()
+    {
+        encounterStarted = false;
+        isBossEnraged = false;
+        isBossDefeated = false;
+
         if (bossBarPanel != null) bossBarPanel.SetActive(false);
         if (victoryModalPanel != null) victoryModalPanel.SetActive(false);
+
+        Debug.Log("<color=yellow>[BossArenaManager] Encounter di-reset untuk percobaan ulang.</color>");
     }
 
     private void Update()
     {
         if (playerTransform == null) FindPlayer();
 
-        // 1. Deteksi masuk arena untuk memicu Lockdown Encounter
+        // 1. Deteksi masuk arena untuk memicu Boss Encounter (Tanpa Lockdown Barrier)
         if (!encounterStarted && playerTransform != null)
         {
             Vector3 pos = playerTransform.position;
             // Area Boss Arena: X [-44..-8], Z [-28..0]. Masuk jika X < -8.5f
-            if (pos.x <= -8.5f && pos.x >= -44f && pos.z >= -27.5f && pos.z <= -0.5f)
+            if (pos.x <= -12 && pos.x >= -44f && pos.z >= -27.5f && pos.z <= -0.5f)
             {
                 StartBossEncounter();
             }
@@ -105,7 +113,7 @@ public class BossArenaManager : MonoBehaviour
                 return;
             }
 
-            // Direct Screen-Point Click Fallback (100% menjamin tombol bisa diklik)
+            // Direct Screen-Point Click Fallback
             if (Input.GetMouseButtonDown(0))
             {
                 Vector2 mousePos = Input.mousePosition;
@@ -135,13 +143,9 @@ public class BossArenaManager : MonoBehaviour
         if (encounterStarted) return;
         encounterStarted = true;
 
-        Debug.Log("<color=red><b>[BOSS ENCOUNTER]</b> Maw J Laygo bangkit! Arena terkunci!</color>");
+        Debug.Log("<color=red><b>[BOSS ENCOUNTER]</b> Maw J Laygo bangkit!</color>");
 
-        // 1. Kunci pintu masuk
-        if (entranceBarrierA != null) entranceBarrierA.SetActive(true);
-        if (entranceBarrierB != null) entranceBarrierB.SetActive(true);
-
-        // 2. Tampilkan Grand Boss Bar
+        // Tampilkan Grand Boss Bar (Barrier dihapus dari sini)
         if (bossBarPanel != null)
         {
             bossBarPanel.SetActive(true);
@@ -186,7 +190,7 @@ public class BossArenaManager : MonoBehaviour
 
         if (bossHPFillImage != null)
         {
-            bossHPFillImage.color = new Color(1f, 0.15f, 0.05f); // Burning crimson
+            bossHPFillImage.color = new Color(1f, 0.15f, 0.05f);
         }
     }
 
@@ -197,17 +201,13 @@ public class BossArenaManager : MonoBehaviour
 
         Debug.Log("<color=#00ff88><b>[BOSS DEFEATED]</b> Maw J Laygo telah dikalahkan! Peti Emas di Altar Terbuka!</color>");
 
-        // 1. Buka kembali pintu masuk
-        if (entranceBarrierA != null) entranceBarrierA.SetActive(false);
-        if (entranceBarrierB != null) entranceBarrierB.SetActive(false);
-
-        // 2. Ubah teks Boss Bar menjadi kemenangan
+        // Ubah teks Boss Bar menjadi kemenangan (Barrier pembuka dihapus)
         if (bossSubtext != null)
         {
             bossSubtext.text = "<color=#00ff88><b>★ MAW J LAYGO TELAH DIKALAHKAN! AMBIL HARTA DI ALTAR! ★</b></color>";
         }
 
-        // 3. Buka segel Peti Emas di Altar
+        // Buka segel Peti Emas di Altar
         if (victoryChest != null)
         {
             victoryChest.UnlockChest();
@@ -222,11 +222,9 @@ public class BossArenaManager : MonoBehaviour
         {
             victoryModalPanel.SetActive(true);
 
-            // Buka kunci kursor mouse agar pemain bisa mengklik tombol
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 
-            // Isi statistik akhir pemain
             if (victoryStatsText != null && playerTransform != null)
             {
                 PlayerStats ps = playerTransform.GetComponent<PlayerStats>();
@@ -258,7 +256,6 @@ public class BossArenaManager : MonoBehaviour
             victoryModalPanel.SetActive(false);
         }
 
-        // Kunci kembali kursor ke gameplay
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -288,7 +285,6 @@ public class BossArenaManager : MonoBehaviour
             return;
         }
 
-        // Buat panel Grand Boss Bar
         bossBarPanel = new GameObject("Boss_HealthBarPanel", typeof(RectTransform));
         bossBarPanel.transform.SetParent(canvasObj.transform, false);
 
@@ -302,7 +298,6 @@ public class BossArenaManager : MonoBehaviour
         Image bg = bossBarPanel.AddComponent<Image>();
         bg.color = new Color(0.06f, 0.05f, 0.08f, 0.92f);
 
-        // Judul Boss
         GameObject titleObj = new GameObject("BossTitle", typeof(RectTransform));
         titleObj.transform.SetParent(bossBarPanel.transform, false);
         RectTransform titleRt = titleObj.GetComponent<RectTransform>();
@@ -320,7 +315,6 @@ public class BossArenaManager : MonoBehaviour
         bossTitleText.alignment = TextAnchor.MiddleCenter;
         bossTitleText.text = "★ BOSS: MAW J LAYGO — THE ABYSSAL OVERLORD ★";
 
-        // Slider Bar HP
         GameObject sliderObj = new GameObject("BossSlider", typeof(RectTransform));
         sliderObj.transform.SetParent(bossBarPanel.transform, false);
         RectTransform sliderRt = sliderObj.GetComponent<RectTransform>();
@@ -347,10 +341,9 @@ public class BossArenaManager : MonoBehaviour
         fillRt.sizeDelta = Vector2.zero;
 
         bossHPFillImage = fillObj.AddComponent<Image>();
-        bossHPFillImage.color = new Color(0.9f, 0.2f, 0.2f); // Fiery red
+        bossHPFillImage.color = new Color(0.9f, 0.2f, 0.2f);
         bossHPSlider.fillRect = fillRt;
 
-        // Subtitle Status
         GameObject subObj = new GameObject("BossSubtext", typeof(RectTransform));
         subObj.transform.SetParent(bossBarPanel.transform, false);
         RectTransform subRt = subObj.GetComponent<RectTransform>();
@@ -379,10 +372,8 @@ public class BossArenaManager : MonoBehaviour
         }
         if (canvasObj == null) return;
 
-        // Pastikan EventSystem aktif agar UI Button dapat diklik
         EnsureEventSystem();
 
-        // Pastikan Canvas memiliki GraphicRaycaster
         if (canvasObj.GetComponent<GraphicRaycaster>() == null)
         {
             canvasObj.AddComponent<GraphicRaycaster>();
@@ -433,7 +424,6 @@ public class BossArenaManager : MonoBehaviour
         Image modalBg = victoryModalPanel.AddComponent<Image>();
         modalBg.color = new Color(0.07f, 0.06f, 0.10f, 0.96f);
 
-        // Header Title
         GameObject headObj = new GameObject("VictoryHeader", typeof(RectTransform));
         headObj.transform.SetParent(victoryModalPanel.transform, false);
         RectTransform headRt = headObj.GetComponent<RectTransform>();
@@ -452,7 +442,6 @@ public class BossArenaManager : MonoBehaviour
         headText.raycastTarget = false;
         headText.text = "★ VICTORY! DUNGEON CLEARED! ★";
 
-        // Stats Content Box
         GameObject statsObj = new GameObject("StatsContent", typeof(RectTransform));
         statsObj.transform.SetParent(victoryModalPanel.transform, false);
         RectTransform statsRt = statsObj.GetComponent<RectTransform>();
@@ -469,7 +458,6 @@ public class BossArenaManager : MonoBehaviour
         victoryStatsText.raycastTarget = false;
         victoryStatsText.text = "Memuat statistik kemenangan...";
 
-        // Tombol Restart
         GameObject btnRestartObj = new GameObject("Btn_Restart", typeof(RectTransform));
         btnRestartObj.transform.SetParent(victoryModalPanel.transform, false);
         RectTransform btnRestartRt = btnRestartObj.GetComponent<RectTransform>();
@@ -506,10 +494,9 @@ public class BossArenaManager : MonoBehaviour
         bTxt.fontStyle = FontStyle.Bold;
         bTxt.color = Color.white;
         bTxt.alignment = TextAnchor.MiddleCenter;
-        bTxt.raycastTarget = false; // TIDAK menghalangi raycast tombol
+        bTxt.raycastTarget = false;
         bTxt.text = "Main Lagi (Restart)";
 
-        // Tombol Jelajahi Bebas (Close Modal)
         GameObject btnCloseObj = new GameObject("Btn_Explore", typeof(RectTransform));
         btnCloseObj.transform.SetParent(victoryModalPanel.transform, false);
         RectTransform btnCloseRt = btnCloseObj.GetComponent<RectTransform>();
@@ -546,10 +533,9 @@ public class BossArenaManager : MonoBehaviour
         cTxt.fontStyle = FontStyle.Bold;
         cTxt.color = Color.white;
         cTxt.alignment = TextAnchor.MiddleCenter;
-        cTxt.raycastTarget = false; // TIDAK menghalangi raycast tombol
+        cTxt.raycastTarget = false;
         cTxt.text = "Jelajahi Bebas";
 
-        // Petunjuk Tombol Shortcut di bawah tombol
         GameObject hintObj = new GameObject("ShortcutHint", typeof(RectTransform));
         hintObj.transform.SetParent(victoryModalPanel.transform, false);
         RectTransform hintRt = hintObj.GetComponent<RectTransform>();

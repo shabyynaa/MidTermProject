@@ -14,8 +14,11 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Kecepatan lari (tahan Left Shift)")]
     public float sprintSpeed = 8f;
 
-    [Tooltip("Kecepatan putar karakter saat berbelok")]
-    public float rotationSpeed = 12f;
+    [Tooltip("Kecepatan putar karakter saat berbelok menggunakan Keyboard/Touchpad")]
+    public float rotationSpeed = 120f; // Disesuaikan untuk perkalian Time.deltaTime
+
+    [Tooltip("Sensitivitas Mouse")]
+    public float mouseSensitivity = 100f;
 
     [Tooltip("Gravitasi agar karakter menempel di lantai")]
     public float gravity = 20f;
@@ -81,13 +84,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // 0b. Jika Main Menu terbuka, jangan proses input pemain
-        if (MainMenuManager.Instance != null && MainMenuManager.Instance.IsMenuOpen())
-        {
-            return;
-        }
-
-        // 1. Handle Pergerakan (WASD / Panah)
+        // 1. Handle Pergerakan & Rotasi (WASD / Panah / Touchpad) menggunakan Time.deltaTime
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical   = Input.GetAxisRaw("Vertical");
 
@@ -96,8 +93,15 @@ public class PlayerController : MonoBehaviour
         bool isSprinting = Input.GetKey(KeyCode.LeftShift);
         currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
 
+        // Pergerakan maju/mundur/samping dikalikan Time.deltaTime
         Vector3 move = (transform.right * horizontal + transform.forward * vertical).normalized;
         moveDirection = move * currentSpeed;
+
+        // Rotasi tambahan via Keyboard/Touchpad (opsional jika ingin mulus menggunakan Time.deltaTime)
+        if (Mathf.Abs(horizontal) > 0.01f && Mathf.Abs(Input.GetAxis("Mouse X")) < 0.01f)
+        {
+            transform.Rotate(Vector3.up * horizontal * rotationSpeed * Time.deltaTime);
+        }
 
         // 2. Gravitasi
         if (controller.isGrounded)
@@ -242,7 +246,7 @@ public class PlayerController : MonoBehaviour
         // 2. Gunakan Raycast dari posisi kamera / mata ke arah depan untuk objek lainnya
         Camera mainCam = Camera.main;
         Ray ray = mainCam != null ? mainCam.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f)) 
-                                  : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
+                                    : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
 
         if (Physics.Raycast(ray, out RaycastHit hit, interactRange + 1f))
         {
