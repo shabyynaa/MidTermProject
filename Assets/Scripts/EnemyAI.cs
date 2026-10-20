@@ -577,7 +577,7 @@ public class EnemyAI : MonoBehaviour
         UpdateAnimation();
     }
 
-    private void LateUpdate()
+   private void LateUpdate()
     {
         // Pastikan Root Motion dari clip Mixamo tidak menggeser posisi visual dari NavMeshAgent
         if (animator != null && animator.transform != transform)
@@ -593,20 +593,47 @@ public class EnemyAI : MonoBehaviour
             hipsBone.localPosition = new Vector3(0f, hipsLocal.y, 0f);
         }
 
-        // Arahkan Health Bar di atas kepala agar selalu menghadap kamera
-        if (healthBarCanvasTransform != null && Camera.main != null)
+        // PERBAIKAN: Gunakan bounds.max.y (titik paling atas kepala) + sedikit offset aman
+        Vector3 topHeadPos = transform.position + Vector3.up * 2.2f;
+        Collider col = GetComponent<Collider>();
+        if (col != null)
         {
-            healthBarCanvasTransform.rotation = Camera.main.transform.rotation;
+            // Ambil sisi Y paling atas dari collider, lalu tambahkan sedikit jarak di atasnya
+            topHeadPos = new Vector3(col.bounds.center.x, col.bounds.max.y + 0.35f, col.bounds.center.z);
+        }
+        else
+        {
+            Renderer rend = GetComponentInChildren<Renderer>();
+            if (rend != null)
+            {
+                topHeadPos = new Vector3(rend.bounds.center.x, rend.bounds.max.y + 0.35f, rend.bounds.center.z);
+            }
         }
 
-        // Arahkan Stun Label di atas kepala agar selalu menghadap kamera
-        if (overheadStunTextMesh != null && overheadStunTextMesh.gameObject.activeInHierarchy && Camera.main != null)
+        // Tempatkan & arahkan Health Bar tepat di atas kepala menghadap kamera
+        if (healthBarCanvasTransform != null)
         {
-            overheadStunTextMesh.transform.rotation = Camera.main.transform.rotation;
+            healthBarCanvasTransform.position = topHeadPos;
+            if (Camera.main != null)
+            {
+                healthBarCanvasTransform.rotation = Camera.main.transform.rotation;
+            }
+        }
+
+        // Tempatkan & arahkan Stun Label tepat di atas kepala menghadap kamera
+        if (overheadStunTextMesh != null && overheadStunTextMesh.gameObject.activeInHierarchy)
+        {
+            overheadStunTextMesh.transform.position = topHeadPos + Vector3.up * 0.4f;
+            if (Camera.main != null)
+            {
+                overheadStunTextMesh.transform.rotation = Camera.main.transform.rotation;
+            }
         }
 
         EnforceRoomBoundary();
     }
+       
+       
 
     private void EvaluateState()
     {
@@ -1052,7 +1079,7 @@ public class EnemyAI : MonoBehaviour
     /// <summary>
     /// Membuat World-Space Health Bar Slider otomatis di atas kepala musuh jika belum ada.
     /// </summary>
-    private void EnsureOverheadHealthBar()
+   private void EnsureOverheadHealthBar()
     {
         if (healthBarSlider != null)
         {
@@ -1078,7 +1105,7 @@ public class EnemyAI : MonoBehaviour
         CapsuleCollider cap = GetComponent<CapsuleCollider>();
         if (cap != null && cap.height > 1f)
         {
-            barHeight = cap.height + 0.35f;
+            barHeight = cap.height + 2.0f;
         }
 
         GameObject canvasObj = new GameObject("EnemyHealthBarCanvas");
@@ -1093,7 +1120,7 @@ public class EnemyAI : MonoBehaviour
         GameObject sliderObj = new GameObject("HealthSlider", typeof(RectTransform));
         sliderObj.transform.SetParent(canvasObj.transform, false);
         RectTransform sliderRect = sliderObj.GetComponent<RectTransform>();
-        sliderRect.sizeDelta = new Vector2(140f, 18f);
+        sliderRect.sizeDelta = new Vector2(140f, 36f); // Diubah dari 18f ke 36f (2x lipat)
 
         GameObject bgObj = new GameObject("Background", typeof(RectTransform));
         bgObj.transform.SetParent(sliderObj.transform, false);
@@ -1110,8 +1137,8 @@ public class EnemyAI : MonoBehaviour
         RectTransform fillAreaRect = fillArea.GetComponent<RectTransform>();
         fillAreaRect.anchorMin = Vector2.zero;
         fillAreaRect.anchorMax = Vector2.one;
-        fillAreaRect.offsetMin = new Vector2(2f, 2f);
-        fillAreaRect.offsetMax = new Vector2(-2f, -2f);
+        fillAreaRect.offsetMin = new Vector2(3f, 3f); // Disesuaikan sedikit agar pinggirannya rapi
+        fillAreaRect.offsetMax = new Vector2(-3f, -3f);
 
         GameObject fillObj = new GameObject("Fill", typeof(RectTransform));
         fillObj.transform.SetParent(fillArea.transform, false);
