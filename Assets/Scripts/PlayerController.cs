@@ -246,7 +246,7 @@ public class PlayerController : MonoBehaviour
         // 2. Gunakan Raycast dari posisi kamera / mata ke arah depan untuk objek lainnya
         Camera mainCam = Camera.main;
         Ray ray = mainCam != null ? mainCam.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f)) 
-                                  : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
+                                    : new Ray(transform.position + Vector3.up * 1.5f, transform.forward);
 
         if (Physics.Raycast(ray, out RaycastHit hit, interactRange + 1f))
         {

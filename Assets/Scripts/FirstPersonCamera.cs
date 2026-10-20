@@ -92,6 +92,14 @@ public class FirstPersonCamera : MonoBehaviour
             return;
         }
 
+        // 0b. Jika Main Menu terbuka, bebaskan kursor dan jangan putar kamera
+        if (MainMenuManager.Instance != null && MainMenuManager.Instance.IsMenuOpen())
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (playerBody == null)
         {
             GameObject p = GameObject.FindWithTag("Player");
