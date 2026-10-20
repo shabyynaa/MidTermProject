@@ -15382,7 +15382,7 @@ MonoBehaviour:
   secondaryValue: 1.6
   customLabel: '3B: Gerbang Kilat
 
-    +CD x0.6 | -ATK x0.6'
+    +SPD 2 | -ATK x1.6'
   isUsed: 0
   labelText: {fileID: 995285209}
 --- !u!23 &147548154
@@ -36710,7 +36710,7 @@ TextMesh:
   m_GameObject: {fileID: 337491516}
   m_Text: '4A: Gerbang Baja
 
-    +DEF 30% | -SPD x0.8'
+    +HP 30| -SPD x1.2'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -41901,62 +41901,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2, y: 0.5, z: 2}
   m_Center: {x: 0, y: -0.25, z: 0}
---- !u!1 &385424986
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 385424987}
-  - component: {fileID: 385424988}
-  m_Layer: 0
-  m_Name: BossArena_Challenge
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &385424987
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 385424986}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1936255922}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &385424988
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 385424986}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa84a83d4468478da0c47347a690bff5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BossArenaManager
-  encounterStarted: 0
-  isBossEnraged: 0
-  isBossDefeated: 0
-  bossEnemy: {fileID: 1872662460}
-  victoryChest: {fileID: 1792856786}
-  bossBarPanel: {fileID: 0}
-  bossHPSlider: {fileID: 0}
-  bossHPFillImage: {fileID: 0}
-  bossTitleText: {fileID: 0}
-  bossSubtext: {fileID: 0}
-  victoryModalPanel: {fileID: 0}
-  victoryStatsText: {fileID: 0}
 --- !u!1001 &387551243
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -49636,7 +49580,7 @@ TextMesh:
   m_GameObject: {fileID: 464479596}
   m_Text: '2B: Gerbang Vampir
 
-    +Heal 20% | -HP Max'
+    +Heal 20 | -HP 15'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -59693,10 +59637,10 @@ MonoBehaviour:
   primaryValue: 30
   useSecondaryEffect: 1
   secondaryGateType: 5
-  secondaryValue: 1
+  secondaryValue: 1.2
   customLabel: '4A: Gerbang Baja
 
-    +DEF 30% | -SPD x0.8'
+    +HP 30| -SPD x1.2'
   isUsed: 0
   labelText: {fileID: 337491517}
 --- !u!23 &547154534
@@ -69002,7 +68946,7 @@ MonoBehaviour:
   secondaryValue: 1.4
   customLabel: '1B: Gerbang Tameng
 
-    +HP x1.5 | -ATK x0.7'
+    +HP 50 | -ATK x1.4'
   isUsed: 0
   labelText: {fileID: 792683124}
 --- !u!23 &626283380
@@ -88290,7 +88234,7 @@ TextMesh:
   m_GameObject: {fileID: 792683122}
   m_Text: '1B: Gerbang Tameng
 
-    +HP x1.5 | -ATK x0.7'
+    +HP 50 | -ATK x1.4'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -99607,10 +99551,10 @@ MonoBehaviour:
   primaryValue: 1.8
   useSecondaryEffect: 1
   secondaryGateType: 5
-  secondaryValue: 1
+  secondaryValue: 1.1
   customLabel: '3A: Gerbang Meriam
 
-    +ATK x1.8 | -CD x1.5'
+    +ATK x1.8 | -SPD x1.1'
   isUsed: 0
   labelText: {fileID: 1906220165}
 --- !u!23 &907446043
@@ -108925,7 +108869,7 @@ TextMesh:
   m_GameObject: {fileID: 995285207}
   m_Text: '3B: Gerbang Kilat
 
-    +CD x0.6 | -ATK x0.6'
+    +SPD 2 | -ATK x1.6'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -127973,7 +127917,7 @@ MonoBehaviour:
   secondaryValue: 25
   customLabel: '1A: Gerbang Ganda
 
-    +ATK x2 | -HP x0.5'
+    +ATK x2 | -HP 25'
   isUsed: 0
   labelText: {fileID: 1413669394}
 --- !u!23 &1155403285
@@ -134794,7 +134738,7 @@ MonoBehaviour:
   secondaryValue: 15
   customLabel: '2B: Gerbang Vampir
 
-    +Heal 20% | -HP Max'
+    +Heal 20 | -HP 15'
   isUsed: 0
   labelText: {fileID: 464479598}
 --- !u!23 &1208507700
@@ -144591,7 +144535,7 @@ TextMesh:
   m_GameObject: {fileID: 1299677704}
   m_Text: '2A: Gerbang Angin
 
-    +SPD x1.4 | -20 HP'
+    +SPD 2 | -20 HP'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -148001,7 +147945,7 @@ MonoBehaviour:
   secondaryValue: 20
   customLabel: '2A: Gerbang Angin
 
-    +SPD x1.4 | -20 HP'
+    +SPD 2 | -20 HP'
   isUsed: 0
   labelText: {fileID: 1299677705}
 --- !u!23 &1331428082
@@ -156648,7 +156592,7 @@ TextMesh:
   m_GameObject: {fileID: 1413669393}
   m_Text: '1A: Gerbang Ganda
 
-    +ATK x2 | -HP x0.5'
+    +ATK x2 | -HP 25'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -158347,7 +158291,7 @@ MonoBehaviour:
   secondaryValue: 15
   customLabel: '4B: Gerbang Berserk
 
-    +ATK x1.5 | -DEF 25%'
+    +ATK x1.5 | -HP 15'
   isUsed: 0
   labelText: {fileID: 1620011861}
 --- !u!23 &1430045387
@@ -180933,7 +180877,7 @@ TextMesh:
   m_GameObject: {fileID: 1620011859}
   m_Text: '4B: Gerbang Berserk
 
-    +ATK x1.5 | -DEF 25%'
+    +ATK x1.5 | -HP 15'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -213699,7 +213643,7 @@ TextMesh:
   m_GameObject: {fileID: 1906220164}
   m_Text: '3A: Gerbang Meriam
 
-    +ATK x1.8 | -CD x1.5'
+    +ATK x1.8 | -SPD x1.1'
   m_OffsetZ: 0
   m_CharacterSize: 0.08
   m_LineSpacing: 1
@@ -216546,7 +216490,7 @@ Transform:
   - {fileID: 1905379672}
   - {fileID: 1493046625}
   - {fileID: 526185253}
-  - {fileID: 385424987}
+  - {fileID: 2000469401}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1937488257
@@ -223837,6 +223781,62 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -6281424698479989189, guid: 86bc76455ea943544a587ff200788dc3, type: 3}
+--- !u!1 &2000469400
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2000469401}
+  - component: {fileID: 2000469402}
+  m_Layer: 0
+  m_Name: BossArena_Challenge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2000469401
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000469400}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1936255922}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2000469402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000469400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa84a83d4468478da0c47347a690bff5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossArenaManager
+  encounterStarted: 0
+  isBossEnraged: 0
+  isBossDefeated: 0
+  bossEnemy: {fileID: 1872662460}
+  victoryChest: {fileID: 1792856786}
+  bossBarPanel: {fileID: 0}
+  bossHPSlider: {fileID: 0}
+  bossHPFillImage: {fileID: 0}
+  bossTitleText: {fileID: 0}
+  bossSubtext: {fileID: 0}
+  victoryModalPanel: {fileID: 0}
+  victoryStatsText: {fileID: 0}
 --- !u!1001 &2001675177
 PrefabInstance:
   m_ObjectHideFlags: 0
