@@ -81,6 +81,12 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        // 0b. Jika Main Menu terbuka, jangan proses input pemain
+        if (MainMenuManager.Instance != null && MainMenuManager.Instance.IsMenuOpen())
+        {
+            return;
+        }
+
         // 1. Handle Pergerakan (WASD / Panah)
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical   = Input.GetAxisRaw("Vertical");
