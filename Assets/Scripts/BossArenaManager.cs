@@ -35,8 +35,15 @@ public class BossArenaManager : MonoBehaviour
     [Header("Victory Screen UI")]
     public GameObject victoryModalPanel;
     public Text victoryStatsText;
+    private RectTransform btnRestartRect;
+    private RectTransform btnCloseRect;
 
     private Transform playerTransform;
+
+    public bool IsVictoryModalOpen()
+    {
+        return victoryModalPanel != null && victoryModalPanel.activeInHierarchy;
+    }
 
     private void Awake()
     {
@@ -78,6 +85,41 @@ public class BossArenaManager : MonoBehaviour
         if (encounterStarted && !isBossDefeated && bossEnemy != null)
         {
             UpdateBossBar(bossEnemy.currentHP, bossEnemy.maxHP);
+        }
+
+        // 3. Jika Layar Kemenangan sedang terbuka, pastikan kursor aktif & tangani shortcut / fallback click
+        if (IsVictoryModalOpen())
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            // Keyboard Shortcuts
+            if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Return))
+            {
+                RestartGame();
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Space))
+            {
+                CloseVictoryModal();
+                return;
+            }
+
+            // Direct Screen-Point Click Fallback (100% menjamin tombol bisa diklik)
+            if (Input.GetMouseButtonDown(0))
+            {
+                Vector2 mousePos = Input.mousePosition;
+                if (btnRestartRect != null && RectTransformUtility.RectangleContainsScreenPoint(btnRestartRect, mousePos))
+                {
+                    RestartGame();
+                    return;
+                }
+                if (btnCloseRect != null && RectTransformUtility.RectangleContainsScreenPoint(btnCloseRect, mousePos))
+                {
+                    CloseVictoryModal();
+                    return;
+                }
+            }
         }
     }
 
@@ -180,6 +222,10 @@ public class BossArenaManager : MonoBehaviour
         {
             victoryModalPanel.SetActive(true);
 
+            // Buka kunci kursor mouse agar pemain bisa mengklik tombol
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
             // Isi statistik akhir pemain
             if (victoryStatsText != null && playerTransform != null)
             {
@@ -211,6 +257,10 @@ public class BossArenaManager : MonoBehaviour
         {
             victoryModalPanel.SetActive(false);
         }
+
+        // Kunci kembali kursor ke gameplay
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void SetupBossBarUI()
@@ -329,11 +379,44 @@ public class BossArenaManager : MonoBehaviour
         }
         if (canvasObj == null) return;
 
+        // Pastikan EventSystem aktif agar UI Button dapat diklik
+        EnsureEventSystem();
+
+        // Pastikan Canvas memiliki GraphicRaycaster
+        if (canvasObj.GetComponent<GraphicRaycaster>() == null)
+        {
+            canvasObj.AddComponent<GraphicRaycaster>();
+        }
+
         Transform existingModal = canvasObj.transform.Find("Victory_ModalPanel");
         if (existingModal != null)
         {
             victoryModalPanel = existingModal.gameObject;
             victoryStatsText = victoryModalPanel.transform.Find("StatsContent")?.GetComponent<Text>();
+
+            Transform rBtn = victoryModalPanel.transform.Find("Btn_Restart");
+            if (rBtn != null)
+            {
+                btnRestartRect = rBtn.GetComponent<RectTransform>();
+                Button b = rBtn.GetComponent<Button>();
+                if (b != null)
+                {
+                    b.onClick.RemoveAllListeners();
+                    b.onClick.AddListener(RestartGame);
+                }
+            }
+
+            Transform cBtn = victoryModalPanel.transform.Find("Btn_Explore");
+            if (cBtn != null)
+            {
+                btnCloseRect = cBtn.GetComponent<RectTransform>();
+                Button b = cBtn.GetComponent<Button>();
+                if (b != null)
+                {
+                    b.onClick.RemoveAllListeners();
+                    b.onClick.AddListener(CloseVictoryModal);
+                }
+            }
             return;
         }
 
@@ -366,6 +449,7 @@ public class BossArenaManager : MonoBehaviour
         headText.fontStyle = FontStyle.Bold;
         headText.color = new Color(1f, 0.85f, 0.2f);
         headText.alignment = TextAnchor.MiddleCenter;
+        headText.raycastTarget = false;
         headText.text = "★ VICTORY! DUNGEON CLEARED! ★";
 
         // Stats Content Box
@@ -382,6 +466,7 @@ public class BossArenaManager : MonoBehaviour
         victoryStatsText.fontSize = 14;
         victoryStatsText.color = Color.white;
         victoryStatsText.alignment = TextAnchor.UpperLeft;
+        victoryStatsText.raycastTarget = false;
         victoryStatsText.text = "Memuat statistik kemenangan...";
 
         // Tombol Restart
@@ -391,12 +476,22 @@ public class BossArenaManager : MonoBehaviour
         btnRestartRt.anchorMin = new Vector2(0.5f, 0f);
         btnRestartRt.anchorMax = new Vector2(0.5f, 0f);
         btnRestartRt.pivot = new Vector2(0.5f, 0f);
-        btnRestartRt.anchoredPosition = new Vector2(-110f, 25f);
-        btnRestartRt.sizeDelta = new Vector2(180f, 42f);
+        btnRestartRt.anchoredPosition = new Vector2(-110f, 36f);
+        btnRestartRt.sizeDelta = new Vector2(190f, 44f);
+        btnRestartRect = btnRestartRt;
 
         Image btnRestartImg = btnRestartObj.AddComponent<Image>();
         btnRestartImg.color = new Color(0.18f, 0.65f, 0.28f);
+        btnRestartImg.raycastTarget = true;
+
         Button btnRestart = btnRestartObj.AddComponent<Button>();
+        btnRestart.targetGraphic = btnRestartImg;
+        ColorBlock rCb = btnRestart.colors;
+        rCb.normalColor = new Color(0.18f, 0.65f, 0.28f);
+        rCb.highlightedColor = new Color(0.25f, 0.85f, 0.38f);
+        rCb.pressedColor = new Color(0.12f, 0.45f, 0.18f);
+        rCb.selectedColor = rCb.highlightedColor;
+        btnRestart.colors = rCb;
         btnRestart.onClick.AddListener(RestartGame);
 
         GameObject btnRestartTxtObj = new GameObject("Text", typeof(RectTransform));
@@ -411,6 +506,7 @@ public class BossArenaManager : MonoBehaviour
         bTxt.fontStyle = FontStyle.Bold;
         bTxt.color = Color.white;
         bTxt.alignment = TextAnchor.MiddleCenter;
+        bTxt.raycastTarget = false; // TIDAK menghalangi raycast tombol
         bTxt.text = "Main Lagi (Restart)";
 
         // Tombol Jelajahi Bebas (Close Modal)
@@ -420,12 +516,22 @@ public class BossArenaManager : MonoBehaviour
         btnCloseRt.anchorMin = new Vector2(0.5f, 0f);
         btnCloseRt.anchorMax = new Vector2(0.5f, 0f);
         btnCloseRt.pivot = new Vector2(0.5f, 0f);
-        btnCloseRt.anchoredPosition = new Vector2(110f, 25f);
-        btnCloseRt.sizeDelta = new Vector2(180f, 42f);
+        btnCloseRt.anchoredPosition = new Vector2(110f, 36f);
+        btnCloseRt.sizeDelta = new Vector2(190f, 44f);
+        btnCloseRect = btnCloseRt;
 
         Image btnCloseImg = btnCloseObj.AddComponent<Image>();
         btnCloseImg.color = new Color(0.25f, 0.35f, 0.5f);
+        btnCloseImg.raycastTarget = true;
+
         Button btnClose = btnCloseObj.AddComponent<Button>();
+        btnClose.targetGraphic = btnCloseImg;
+        ColorBlock cCb = btnClose.colors;
+        cCb.normalColor = new Color(0.25f, 0.35f, 0.5f);
+        cCb.highlightedColor = new Color(0.35f, 0.5f, 0.72f);
+        cCb.pressedColor = new Color(0.18f, 0.25f, 0.38f);
+        cCb.selectedColor = cCb.highlightedColor;
+        btnClose.colors = cCb;
         btnClose.onClick.AddListener(CloseVictoryModal);
 
         GameObject btnCloseTxtObj = new GameObject("Text", typeof(RectTransform));
@@ -440,7 +546,40 @@ public class BossArenaManager : MonoBehaviour
         cTxt.fontStyle = FontStyle.Bold;
         cTxt.color = Color.white;
         cTxt.alignment = TextAnchor.MiddleCenter;
+        cTxt.raycastTarget = false; // TIDAK menghalangi raycast tombol
         cTxt.text = "Jelajahi Bebas";
+
+        // Petunjuk Tombol Shortcut di bawah tombol
+        GameObject hintObj = new GameObject("ShortcutHint", typeof(RectTransform));
+        hintObj.transform.SetParent(victoryModalPanel.transform, false);
+        RectTransform hintRt = hintObj.GetComponent<RectTransform>();
+        hintRt.anchorMin = new Vector2(0f, 0f);
+        hintRt.anchorMax = new Vector2(1f, 0f);
+        hintRt.pivot = new Vector2(0.5f, 0f);
+        hintRt.anchoredPosition = new Vector2(0f, 10f);
+        hintRt.sizeDelta = new Vector2(520f, 20f);
+        Text hintTxt = hintObj.AddComponent<Text>();
+        hintTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        hintTxt.fontSize = 11;
+        hintTxt.color = new Color(0.7f, 0.75f, 0.85f, 0.85f);
+        hintTxt.alignment = TextAnchor.MiddleCenter;
+        hintTxt.raycastTarget = false;
+        hintTxt.text = "Tip: Tekan [R / Enter] untuk Main Lagi  •  [Space / Esc] untuk Jelajahi Bebas";
+    }
+
+    private void EnsureEventSystem()
+    {
+        if (UnityEngine.EventSystems.EventSystem.current == null)
+        {
+            UnityEngine.EventSystems.EventSystem existing = Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>();
+            if (existing == null)
+            {
+                GameObject esObj = new GameObject("EventSystem");
+                esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                Debug.Log("<color=cyan>[UI] EventSystem otomatis dibuat agar tombol UI bisa diklik.</color>");
+            }
+        }
     }
 
     private void EnsureReferences()
