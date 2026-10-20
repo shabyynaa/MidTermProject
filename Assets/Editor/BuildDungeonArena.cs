@@ -77,6 +77,9 @@ public class BuildDungeonArena : EditorWindow
         BuildDecorations(arena);
         BuildDualMathGates(arena);
         Hall2ChallengeSetup.SetupHall2ChallengeInternal(silent: true);
+        Hall3ChallengeSetup.SetupHall3ChallengeInternal(silent: true);
+        Hall4ChallengeSetup.SetupHall4ChallengeInternal(silent: true);
+        BossArenaSetup.SetupBossArenaInternal(silent: true);
 
         AddSolidFloorAndWallColliders(arena);
         RepositionCharactersAndCamera();

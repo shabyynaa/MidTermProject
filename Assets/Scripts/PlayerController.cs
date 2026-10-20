@@ -207,6 +207,24 @@ public class PlayerController : MonoBehaviour
                 Hall2ChallengeManager.Instance.TryDepositKeysAtShelf();
                 return;
             }
+
+            Hall3Brazier brazier = nearby.GetComponentInParent<Hall3Brazier>();
+            if (brazier != null && !brazier.isLit)
+            {
+                Debug.Log($"<color=#ff9900>[Brazier]</color> Menyalakan tungku api: {brazier.brazierName}");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                brazier.Ignite();
+                return;
+            }
+
+            VictoryChest chest = nearby.GetComponentInParent<VictoryChest>();
+            if (chest != null && chest.isUnlocked && !chest.isOpened)
+            {
+                Debug.Log("<color=#ffd700>[Victory Chest]</color> Membuka peti kemenangan!");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                chest.OpenChest();
+                return;
+            }
         }
 
         // 2. Gunakan Raycast dari posisi kamera / mata ke arah depan untuk objek lainnya
@@ -237,6 +255,24 @@ public class PlayerController : MonoBehaviour
                     Hall2ChallengeManager.Instance.TryDepositKeysAtShelf();
                     return;
                 }
+            }
+
+            Hall3Brazier hitBrazier = obj.GetComponentInParent<Hall3Brazier>();
+            if (hitBrazier != null && !hitBrazier.isLit)
+            {
+                Debug.Log($"<color=#ff9900>[Brazier]</color> Menyalakan tungku api lewat Raycast: {hitBrazier.brazierName}");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                hitBrazier.Ignite();
+                return;
+            }
+
+            VictoryChest hitChest = obj.GetComponentInParent<VictoryChest>();
+            if (hitChest != null && hitChest.isUnlocked && !hitChest.isOpened)
+            {
+                Debug.Log("<color=#ffd700>[Victory Chest]</color> Membuka peti kemenangan lewat Raycast!");
+                if (animator != null && HasParameter("Take", animator)) animator.SetTrigger("Take");
+                hitChest.OpenChest();
+                return;
             }
 
             // Cek apakah objek ber-tag Item/Interactable atau namanya mengandung kata item/chest/collectible

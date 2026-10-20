@@ -72,6 +72,17 @@ public class EnemyAI : MonoBehaviour
     public Image healthBarFillImage;
     private Transform healthBarCanvasTransform;
 
+    [Header("Special Monster Mechanics (Hall 4 Hulk & Boss)")]
+    public bool isStunned = false;
+    public float stunTimer = 0f;
+    public bool isCharging = false;
+    public float chargeTimer = 0f;
+    public Vector3 chargeDirection;
+    public float chargeCooldownTimer = 0f;
+    public bool hasArmor = false;
+    public bool isEnraged = false;
+    private TextMesh overheadStunTextMesh;
+
     [Header("Animation")]
     public Animator animator;
 
@@ -142,6 +153,63 @@ public class EnemyAI : MonoBehaviour
             fieldOfViewAngle = 140f; // FOV lebar
             detectRadius = 14f;      // Penglihatan jauh
             patrolWaitTime = 2.5f;   // Berhenti sejenak di waypoint
+        }
+
+        // Karakteristik Khusus Enemy Hall 3 (Vampire):
+        // 1. Bergerak sangat lincah di kegelapan (chaseSpeed = 6.2)
+        // 2. Memiliki Life Steal saat menyerang (+6 HP)
+        // 3. Takut pada cahaya tungku api (Photophobia / Safe Zone avoidance)
+        // 4. HP Seimbang (100 HP)
+        if (roomPrefix == "H3_" || name.ToLower().Contains("vampire") || name.ToLower().Contains("hall3"))
+        {
+            maxHP = 100f;
+            currentHP = 100f;
+            fleeHPThreshold = 20f;
+            patrolSpeed = 3.0f;
+            chaseSpeed = 6.2f;
+            attackDamage = 12f;
+            detectRadius = 13f;
+            patrolWaitTime = 1.8f;
+        }
+
+        // Karakteristik Khusus Enemy Hall 4 (Pumpkin Hulk):
+        // 1. Raksasa bertubuh keras (Heavy Armor: meredam 35% damage saat aktif)
+        // 2. Serangan berat (attackDamage = 20, Downward Smash)
+        // 3. Bull Rush / Terjangan serudukan ke arah player
+        // 4. Stun ketika menabrak pilar batu Hall 4
+        // 5. HP Tinggi (160 HP)
+        if (roomPrefix == "H4_" || name.ToLower().Contains("pumpkin") || name.ToLower().Contains("hall4"))
+        {
+            maxHP = 160f;
+            currentHP = 160f;
+            fleeHPThreshold = 25f;
+            patrolSpeed = 2.4f;
+            chaseSpeed = 4.8f;
+            attackDamage = 20f;
+            detectRadius = 13f;
+            attackRadius = 2.8f;
+            patrolWaitTime = 2.0f;
+            hasArmor = true;
+        }
+
+        // Karakteristik Khusus Boss Arena (Maw J Laygo):
+        // 1. HP Sangat Tinggi (280 HP)
+        // 2. Pantang kabur (fleeHPThreshold = 0)
+        // 3. Multi-hit combo claw attack (damage = 14, cooldown = 1.6s)
+        // 4. Jarak deteksi luas (detectRadius = 20)
+        // 5. Transisi Fase 2 Enraged saat HP <= 50%
+        if (isBoss || name.ToLower().Contains("maw") || name.ToLower().Contains("boss"))
+        {
+            maxHP = 280f;
+            currentHP = 280f;
+            fleeHPThreshold = 0f; // Boss bertarung sampai titik darah penghabisan!
+            patrolSpeed = 3.0f;
+            chaseSpeed = 5.4f;
+            attackDamage = 14f;
+            attackRadius = 2.8f;
+            attackCooldown = 1.6f;
+            detectRadius = 20f;
+            patrolWaitTime = 2.0f;
         }
 
         SetupGazeLight();
@@ -438,6 +506,22 @@ public class EnemyAI : MonoBehaviour
                 StopChaseAndReturnToPatrol();
             }
         }
+
+        // 3. Khusus Vampire Hall 3: Menghindar mundur jika berada di dalam Safe Zone api yang menyala
+        if ((roomPrefix == "H3_" || name.ToLower().Contains("vampire")) && Hall3ChallengeManager.Instance != null)
+        {
+            if (Hall3ChallengeManager.Instance.IsPositionInSafeLightZone(transform.position, out Vector3 lightCenter, out float safeRadius))
+            {
+                Vector3 away = (transform.position - lightCenter);
+                away.y = 0f;
+                if (away.sqrMagnitude < 0.1f) away = -transform.forward;
+                Vector3 safePos = ClampPositionToRoom(lightCenter + away.normalized * (safeRadius + 1.2f), roomInnerMargin);
+                if (agent != null && agent.isOnNavMesh && agent.isActiveAndEnabled)
+                {
+                    agent.SetDestination(safePos);
+                }
+            }
+        }
     }
 
     private void Update()
@@ -446,6 +530,25 @@ public class EnemyAI : MonoBehaviour
         {
             return;
         }
+
+        // Khusus Stun: Jika sedang pusing / ter-stun, enemy berhenti total
+        if (isStunned)
+        {
+            stunTimer -= Time.deltaTime;
+            if (agent != null && agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+            }
+            if (stunTimer <= 0f)
+            {
+                EndStun();
+            }
+            UpdateAnimation();
+            return;
+        }
+
+        if (chargeCooldownTimer > 0f) chargeCooldownTimer -= Time.deltaTime;
 
         // 1. Evaluasi State Transition (Perception, Room Check & Decision-Making)
         EvaluateState();
@@ -496,6 +599,12 @@ public class EnemyAI : MonoBehaviour
             healthBarCanvasTransform.rotation = Camera.main.transform.rotation;
         }
 
+        // Arahkan Stun Label di atas kepala agar selalu menghadap kamera
+        if (overheadStunTextMesh != null && overheadStunTextMesh.gameObject.activeInHierarchy && Camera.main != null)
+        {
+            overheadStunTextMesh.transform.rotation = Camera.main.transform.rotation;
+        }
+
         EnforceRoomBoundary();
     }
 
@@ -539,7 +648,14 @@ public class EnemyAI : MonoBehaviour
 
         float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
 
-        if (distToPlayer <= attackRadius)
+        // Khusus Vampire Hall 3: Cek apakah Player sedang berada di dalam Safe Zone cahaya obor
+        bool playerProtectedByLight = false;
+        if ((roomPrefix == "H3_" || name.ToLower().Contains("vampire")) && Hall3ChallengeManager.Instance != null)
+        {
+            playerProtectedByLight = Hall3ChallengeManager.Instance.IsPositionInSafeLightZone(playerTarget.position, out _, out _);
+        }
+
+        if (distToPlayer <= attackRadius && !playerProtectedByLight)
         {
             currentState = EnemyState.Attack;
         }
@@ -633,8 +749,164 @@ public class EnemyAI : MonoBehaviour
 
         if (playerTarget != null)
         {
+            // Khusus Vampire: Jika Player berada di dalam Safe Zone cahaya obor, intai dari pinggir lingkaran cahaya
+            if ((roomPrefix == "H3_" || name.ToLower().Contains("vampire")) && Hall3ChallengeManager.Instance != null)
+            {
+                if (Hall3ChallengeManager.Instance.IsPositionInSafeLightZone(playerTarget.position, out Vector3 lightCenter, out float safeRadius))
+                {
+                    Vector3 awayFromLight = (transform.position - lightCenter);
+                    awayFromLight.y = 0f;
+                    if (awayFromLight.sqrMagnitude < 0.1f) awayFromLight = transform.forward;
+                    Vector3 stalkDestination = lightCenter + awayFromLight.normalized * (safeRadius + 0.9f);
+                    stalkDestination = ClampPositionToRoom(stalkDestination, roomInnerMargin);
+                    SetAgentDestination(stalkDestination);
+                    return;
+                }
+            }
+
+            // Khusus Pumpkin Hulk: Mekanisme Bull Rush / Charge Attack
+            if (roomPrefix == "H4_" || name.ToLower().Contains("pumpkin"))
+            {
+                if (HandleHulkCharge()) return;
+            }
+
             SetAgentDestination(playerTarget.position);
         }
+    }
+
+    private bool HandleHulkCharge()
+    {
+        if (playerTarget == null) return false;
+
+        float distToPlayer = Vector3.Distance(transform.position, playerTarget.position);
+
+        if (isCharging)
+        {
+            chargeTimer -= Time.deltaTime;
+
+            // Gerakkan Hulk lurus ke arah chargeDirection dengan kecepatan tinggi 8.5 m/s
+            agent.speed = 8.5f;
+            agent.isStopped = false;
+            Vector3 targetChargePos = transform.position + chargeDirection * 3.5f;
+            targetChargePos = ClampPositionToRoom(targetChargePos, roomInnerMargin);
+            SetAgentDestination(targetChargePos);
+
+            // 1. Cek tabrakan dengan Player
+            if (distToPlayer <= 2.2f)
+            {
+                PlayerStats ps = playerTarget.GetComponent<PlayerStats>();
+                if (ps != null)
+                {
+                    ps.TakeDamage(25f);
+                    Debug.Log($"<color=red>[Hulk Charge Hit]</color> Pumpkin Hulk menerjang Player dengan dahsyat (25 DMG)!");
+                }
+                isCharging = false;
+                chargeCooldownTimer = 8f;
+                return true;
+            }
+
+            // 2. Cek tabrakan dengan Pilar Hall 4 (Pillar_H4_Top di (17, 0, -9) dan Pillar_H4_Bot di (17, 0, -19))
+            Vector2 hulkXZ = new Vector2(transform.position.x, transform.position.z);
+            Vector2 pilarTopXZ = new Vector2(17f, -9f);
+            Vector2 pilarBotXZ = new Vector2(17f, -19f);
+
+            if (Vector2.Distance(hulkXZ, pilarTopXZ) <= 2.2f || Vector2.Distance(hulkXZ, pilarBotXZ) <= 2.2f)
+            {
+                Debug.Log("<color=yellow><b>[Hulk CRASH!]</b></color> Pumpkin Hulk menabrak Pilar Batu Hall 4!");
+                TriggerStun(3.5f);
+                return true;
+            }
+
+            // 3. Waktu charge selesai
+            if (chargeTimer <= 0f)
+            {
+                isCharging = false;
+                chargeCooldownTimer = 8f;
+            }
+            return true;
+        }
+        else
+        {
+            // Cek kondisi untuk memulai Bull Charge: Cooldown siap dan jarak 5m - 12m
+            if (chargeCooldownTimer <= 0f && distToPlayer >= 5.0f && distToPlayer <= 12.0f)
+            {
+                isCharging = true;
+                chargeTimer = 2.2f;
+                Vector3 dir = (playerTarget.position - transform.position);
+                dir.y = 0f;
+                chargeDirection = dir.normalized;
+                Debug.Log("<color=#ff6600>[Hulk Charge]</color> Pumpkin Hulk bersiap menerjang ke arah Player!");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void TriggerStun(float duration)
+    {
+        isStunned = true;
+        isCharging = false;
+        stunTimer = duration;
+        chargeCooldownTimer = duration + 5f;
+
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+        }
+
+        EnsureStunTextMesh();
+        if (overheadStunTextMesh != null)
+        {
+            overheadStunTextMesh.gameObject.SetActive(true);
+            overheadStunTextMesh.text = "<color=#ffff00><b>★ TER-STUN! ★</b></color>\n<size=20><color=#ffffff>(Pertahanan Terbuka!)</color></size>";
+        }
+
+        Debug.Log($"<color=yellow>[Stun]</color> {name} ter-STUN selama {duration} detik!");
+    }
+
+    public void EndStun()
+    {
+        isStunned = false;
+        if (overheadStunTextMesh != null)
+        {
+            overheadStunTextMesh.gameObject.SetActive(false);
+        }
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+        }
+        Debug.Log($"<color=yellow>[Stun End]</color> {name} telah pulih dari efek stun!");
+    }
+
+    public void BreakArmor()
+    {
+        hasArmor = false;
+        Debug.Log($"<color=#00ff88>[Armor Break]</color> Armor tebal {name} telah hancur!");
+    }
+
+    private void EnsureStunTextMesh()
+    {
+        if (overheadStunTextMesh != null) return;
+        Transform existing = transform.Find("StunLabel");
+        if (existing != null)
+        {
+            overheadStunTextMesh = existing.GetComponent<TextMesh>();
+            return;
+        }
+
+        GameObject obj = new GameObject("StunLabel");
+        obj.transform.SetParent(transform, false);
+        obj.transform.localPosition = new Vector3(0f, 3.8f, 0f);
+        obj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+        overheadStunTextMesh = obj.AddComponent<TextMesh>();
+        overheadStunTextMesh.alignment = TextAlignment.Center;
+        overheadStunTextMesh.anchor = TextAnchor.MiddleCenter;
+        overheadStunTextMesh.fontSize = 32;
+        overheadStunTextMesh.characterSize = 0.08f;
+        overheadStunTextMesh.fontStyle = FontStyle.Bold;
     }
 
     // --- BEHAVIOR: ATTACK (Berhenti, hadap Player, mainkan animasi Attack hanya jika Player di ruangan) ---
@@ -672,6 +944,15 @@ public class EnemyAI : MonoBehaviour
                 {
                     playerStats.TakeDamage(attackDamage);
                     Debug.Log($"<color=red>[{name} Attack]</color> Menyerang Player sebesar {attackDamage} Damage!");
+
+                    // Efek Life Steal Khusus Vampire (+6 HP)
+                    if (roomPrefix == "H3_" || name.ToLower().Contains("vampire"))
+                    {
+                        float healAmount = 6f;
+                        currentHP = Mathf.Min(maxHP, currentHP + healAmount);
+                        UpdateHealthUI();
+                        Debug.Log($"<color=magenta>[Vampire Life Steal]</color> Menyerap {healAmount} HP dari Player! Sisa HP Vampire: {currentHP}/{maxHP}");
+                    }
                 }
 
                 nextAttackTime = Time.time + attackCooldown;
@@ -716,14 +997,56 @@ public class EnemyAI : MonoBehaviour
     {
         if (isDead) return;
 
+        if (isStunned)
+        {
+            damage *= 1.5f;
+            Debug.Log($"<color=#ffff00>[Stun Critical]</color> {name} menerima bonus 50% damage ({damage} DMG) karena dalam kondisi STUN!");
+        }
+        else if (hasArmor)
+        {
+            damage *= 0.65f;
+            Debug.Log($"<color=#888888>[Heavy Armor]</color> Kulit tebal {name} meredam damage menjadi {damage} DMG!");
+        }
+
         currentHP = Mathf.Clamp(currentHP - damage, 0f, maxHP);
         UpdateHealthUI();
         Debug.Log($"<color=orange>[{name}]</color> Terkena {damage} damage! Sisa HP: {currentHP}/{maxHP}");
+
+        // Sinkronisasi dengan Boss Arena Manager jika ini Boss
+        if (isBoss || name.ToLower().Contains("maw") || name.ToLower().Contains("boss"))
+        {
+            if (BossArenaManager.Instance != null)
+            {
+                BossArenaManager.Instance.UpdateBossBar(currentHP, maxHP);
+            }
+
+            // Pemicu Fase 2 Enraged saat HP menyentuh 50%
+            if (!isEnraged && currentHP <= maxHP * 0.5f && currentHP > 0f)
+            {
+                TriggerBossEnrage();
+            }
+        }
 
         if (currentHP <= 0f)
         {
             Die();
         }
+    }
+
+    public void TriggerBossEnrage()
+    {
+        if (isEnraged) return;
+        isEnraged = true;
+        chaseSpeed = 6.6f;
+        attackDamage = 18f;
+        attackCooldown = 1.1f;
+
+        if (BossArenaManager.Instance != null)
+        {
+            BossArenaManager.Instance.OnBossEnraged();
+        }
+
+        Debug.Log($"<color=red><b>[BOSS ENRAGE]</b></color> {name} memasuki FASE AMARAH (Enraged Berserk)! Kecepatan & ATK meningkat!");
     }
 
     /// <summary>
@@ -869,19 +1192,37 @@ public class EnemyAI : MonoBehaviour
         if (col != null) col.enabled = false;
 
         Debug.Log($"<color=green>[{name} Defeated]</color> Musuh telah dikalahkan!");
+
+        // Khusus Boss: Beritahu BossArenaManager bahwa Boss telah dikalahkan
+        if (isBoss || name.ToLower().Contains("maw") || name.ToLower().Contains("boss"))
+        {
+            if (BossArenaManager.Instance != null)
+            {
+                BossArenaManager.Instance.OnBossDefeated();
+            }
+        }
     }
 
     private void UpdateAnimation()
     {
         if (animator == null || agent == null) return;
 
+        if (isStunned)
+        {
+            if (HasParameter("Speed", animator)) animator.SetFloat("Speed", 0f);
+            if (HasParameter("IsWalking", animator)) animator.SetBool("IsWalking", false);
+            if (HasParameter("IsRunning", animator)) animator.SetBool("IsRunning", false);
+            if (HasParameter("IsFleeing", animator)) animator.SetBool("IsFleeing", false);
+            return;
+        }
+
         float currentVelocity = agent.velocity.magnitude;
-        bool isMoving = !agent.isStopped && currentVelocity > 0.15f;
-        bool isChaseOrFlee = (currentState == EnemyState.Chase || currentState == EnemyState.Flee);
+        bool isMoving = !agent.isStopped && (currentVelocity > 0.15f || isCharging);
+        bool isChaseOrFlee = (currentState == EnemyState.Chase || currentState == EnemyState.Flee || isCharging);
         bool isFleeing = (currentState == EnemyState.Flee);
 
         if (HasParameter("Speed", animator))
-            animator.SetFloat("Speed", isMoving ? currentVelocity : 0f);
+            animator.SetFloat("Speed", isMoving ? Mathf.Max(currentVelocity, isCharging ? 8.5f : 0f) : 0f);
 
         if (HasParameter("IsWalking", animator))
             animator.SetBool("IsWalking", isMoving && !isChaseOrFlee);

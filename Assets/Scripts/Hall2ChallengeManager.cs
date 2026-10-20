@@ -303,7 +303,7 @@ public class Hall2ChallengeManager : MonoBehaviour
         // 2. Cari atau hubungkan Kunci
         if (keyItems.Count == 0)
         {
-            keyItems.AddRange(Object.FindObjectsByType<Hall2KeyItem>(FindObjectsSortMode.None));
+            keyItems.AddRange(Object.FindObjectsByType<Hall2KeyItem>());
         }
 
         // 3. Hubungkan Barrier
