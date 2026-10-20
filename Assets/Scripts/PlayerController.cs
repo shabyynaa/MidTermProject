@@ -75,6 +75,12 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        // 0. Jika Layar Kemenangan terbuka, jangan proses input pemain (WASD, Attack, Interact)
+        if (BossArenaManager.Instance != null && BossArenaManager.Instance.IsVictoryModalOpen())
+        {
+            return;
+        }
+
         // 1. Handle Pergerakan (WASD / Panah)
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical   = Input.GetAxisRaw("Vertical");

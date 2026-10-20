@@ -84,6 +84,14 @@ public class FirstPersonCamera : MonoBehaviour
 
     private void LateUpdate()
     {
+        // 0. Jika Layar Kemenangan terbuka, bebaskan kursor dan jangan putar kamera
+        if (BossArenaManager.Instance != null && BossArenaManager.Instance.IsVictoryModalOpen())
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (playerBody == null)
         {
             GameObject p = GameObject.FindWithTag("Player");
