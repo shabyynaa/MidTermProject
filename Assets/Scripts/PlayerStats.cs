@@ -34,6 +34,8 @@ public class PlayerStats : MonoBehaviour
     private Vector3 spawnPosition;
     private Quaternion spawnRotation;
 
+    public static PlayerStats Instance { get; private set; }
+
     public bool IsGameOverModalOpen()
     {
         return gameOverModalPanel != null && gameOverModalPanel.activeInHierarchy;
@@ -41,12 +43,18 @@ public class PlayerStats : MonoBehaviour
 
     private void Awake()
     {
+        Instance = this;
         currentHP = maxHP;
         currentLives = maxLives; // Inisialisasi awal 3 nyawa
         playerController = GetComponent<PlayerController>();
         characterController = GetComponent<CharacterController>();
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     private void Start()
