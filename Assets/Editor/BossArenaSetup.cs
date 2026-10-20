@@ -24,7 +24,7 @@ public class BossArenaSetup : EditorWindow
         if (arena == null) return;
 
         Transform challengeRoot = arena.transform.Find("BossArena_Challenge");
-        if (challengeRoot == null || challengeRoot.Find("Barrier_Boss_EntranceA") == null)
+        if (challengeRoot == null || challengeRoot.Find("BossArena_Manager") == null)
         {
             SetupBossArenaInternal(silent: true);
         }
@@ -55,19 +55,6 @@ public class BossArenaSetup : EditorWindow
         root.transform.SetParent(arena.transform, false);
 
         BossArenaManager manager = root.AddComponent<BossArenaManager>();
-
-        // 1. Buat Barrier Lockdown Pintu Masuk Boss Arena (dari Koridor 4A & 4B)
-        // Koridor 4A: X = -8.2, Z = -8
-        GameObject bar4A = PlaceModel(root, "Barrier_Boss_EntranceA", "barrier", new Vector3(-8.2f, 0f, -8f), 90f);
-        SetupLockdownBarrier(bar4A, "Pintu Arena 4A");
-        bar4A.SetActive(false); // Default mati sampai pemain masuk
-        manager.entranceBarrierA = bar4A;
-
-        // Koridor 4B: X = -8.2, Z = -20
-        GameObject bar4B = PlaceModel(root, "Barrier_Boss_EntranceB", "barrier", new Vector3(-8.2f, 0f, -20f), 90f);
-        SetupLockdownBarrier(bar4B, "Pintu Arena 4B");
-        bar4B.SetActive(false); // Default mati sampai pemain masuk
-        manager.entranceBarrierB = bar4B;
 
         // 2. Setup Peti Kemenangan Emas di Altar Tengah (-26, 1.0, -14)
         GameObject chestObj = GameObject.Find("Altar_Chest");
@@ -154,42 +141,18 @@ public class BossArenaSetup : EditorWindow
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorSceneManager.SaveOpenScenes();
 
-        Debug.Log("<color=#ffd700>[BossArenaSetup] ✅ Setup Boss Arena (Encounter Lockdown, Grand Boss Bar, Altar Victory Chest, & Maw J Laygo) berhasil dibuat!</color>");
+        Debug.Log("<color=#ffd700>[BossArenaSetup] ✅ Setup Boss Arena (Grand Boss Bar, Altar Victory Chest, & Maw J Laygo) berhasil dibuat!</color>");
         if (!silent)
         {
             EditorUtility.DisplayDialog("Setup Boss Arena Selesai!",
                 "Boss Arena Berhasil Dikonfigurasi:\n\n" +
-                "• Gerbang masuk otomatis mengunci saat pemain melangkah masuk (Lockdown)\n" +
                 "• Grand Boss Health Bar tampil di atas layar: Maw J Laygo (280 HP)\n" +
                 "• Fase 1: Serangan cakar beruntun savage\n" +
                 "• Fase 2 (HP <= 50%): Enraged Blood Moon (Kecepatan melonjak & ATK meningkat!)\n" +
-                "• Saat Boss mati: Pintu terbuka, Peti Emas di Altar memancarkan cahaya kemenangan!\n" +
+                "• Saat Boss mati: Peti Emas di Altar memancarkan cahaya kemenangan!\n" +
                 "• Buka Peti Emas untuk menampilkan Layar Game Clear (Statistik & Tombol Restart)!",
                 "Luar Biasa!");
         }
-    }
-
-    static void SetupLockdownBarrier(GameObject barObj, string label)
-    {
-        barObj.transform.localScale = new Vector3(1.1f, 1.4f, 1.1f);
-
-        BoxCollider col = barObj.GetComponent<BoxCollider>();
-        if (col == null) col = barObj.AddComponent<BoxCollider>();
-        col.size = new Vector3(2.8f, 2.5f, 0.8f);
-        col.center = new Vector3(0f, 1.25f, 0f);
-
-        GameObject labelObj = new GameObject("BarrierLabel");
-        labelObj.transform.SetParent(barObj.transform, false);
-        labelObj.transform.localPosition = new Vector3(0f, 2.3f, 0f);
-        labelObj.transform.localRotation = Quaternion.identity;
-
-        TextMesh tm = labelObj.AddComponent<TextMesh>();
-        tm.text = $"<color=#ff2244>[ARENA TERKUNCI]\n{label}</color>\n<size=20><color=#ffaa00>Kalahkan Maw J Laygo!</color></size>";
-        tm.alignment = TextAlignment.Center;
-        tm.anchor = TextAnchor.MiddleCenter;
-        tm.fontSize = 28;
-        tm.characterSize = 0.08f;
-        tm.fontStyle = FontStyle.Bold;
     }
 
     static GameObject PlaceModel(GameObject parent, string goName, string assetName, Vector3 pos, float rotY = 0f)
