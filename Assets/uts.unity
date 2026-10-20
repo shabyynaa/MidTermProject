@@ -41901,6 +41901,62 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2, y: 0.5, z: 2}
   m_Center: {x: 0, y: -0.25, z: 0}
+--- !u!1 &385424986
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 385424987}
+  - component: {fileID: 385424988}
+  m_Layer: 0
+  m_Name: BossArena_Challenge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &385424987
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 385424986}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1936255922}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &385424988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 385424986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa84a83d4468478da0c47347a690bff5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BossArenaManager
+  encounterStarted: 0
+  isBossEnraged: 0
+  isBossDefeated: 0
+  bossEnemy: {fileID: 1872662460}
+  victoryChest: {fileID: 1792856786}
+  bossBarPanel: {fileID: 0}
+  bossHPSlider: {fileID: 0}
+  bossHPFillImage: {fileID: 0}
+  bossTitleText: {fileID: 0}
+  bossSubtext: {fileID: 0}
+  victoryModalPanel: {fileID: 0}
+  victoryStatsText: {fileID: 0}
 --- !u!1001 &387551243
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -156317,62 +156373,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2, y: 0.5, z: 2}
   m_Center: {x: 0, y: -0.25, z: 0}
---- !u!1 &1411642753
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1411642754}
-  - component: {fileID: 1411642755}
-  m_Layer: 0
-  m_Name: BossArena_Challenge
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1411642754
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1411642753}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1936255922}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1411642755
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1411642753}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa84a83d4468478da0c47347a690bff5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BossArenaManager
-  encounterStarted: 0
-  isBossEnraged: 0
-  isBossDefeated: 0
-  bossEnemy: {fileID: 1872662460}
-  victoryChest: {fileID: 1792856786}
-  bossBarPanel: {fileID: 0}
-  bossHPSlider: {fileID: 0}
-  bossHPFillImage: {fileID: 0}
-  bossTitleText: {fileID: 0}
-  bossSubtext: {fileID: 0}
-  victoryModalPanel: {fileID: 0}
-  victoryStatsText: {fileID: 0}
 --- !u!1 &1412303827
 GameObject:
   m_ObjectHideFlags: 0
@@ -216546,7 +216546,7 @@ Transform:
   - {fileID: 1905379672}
   - {fileID: 1493046625}
   - {fileID: 526185253}
-  - {fileID: 1411642754}
+  - {fileID: 385424987}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1937488257
