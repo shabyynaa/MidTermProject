@@ -78,8 +78,16 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // 0. Jika Layar Kemenangan terbuka, jangan proses input pemain (WASD, Attack, Interact)
+        // 0. Jika Layar Kemenangan, Game Over, atau Main Menu terbuka, jangan proses input pemain
         if (BossArenaManager.Instance != null && BossArenaManager.Instance.IsVictoryModalOpen())
+        {
+            return;
+        }
+        if (PlayerStats.Instance != null && PlayerStats.Instance.IsGameOverModalOpen())
+        {
+            return;
+        }
+        if (MainMenuManager.Instance != null && MainMenuManager.Instance.IsMenuOpen())
         {
             return;
         }

@@ -92,7 +92,15 @@ public class FirstPersonCamera : MonoBehaviour
             return;
         }
 
-        // 0b. Jika Main Menu terbuka, bebaskan kursor dan jangan putar kamera
+        // 0b. Jika Game Over terbuka, bebaskan kursor dan jangan putar kamera
+        if (PlayerStats.Instance != null && PlayerStats.Instance.IsGameOverModalOpen())
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        // 0c. Jika Main Menu terbuka, bebaskan kursor dan jangan putar kamera
         if (MainMenuManager.Instance != null && MainMenuManager.Instance.IsMenuOpen())
         {
             Cursor.lockState = CursorLockMode.None;
